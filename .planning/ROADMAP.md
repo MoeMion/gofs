@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Define the FTP VFS contract, defaults, and automated parsing coverage.
-- [ ] 01-02-PLAN.md — Route FTP endpoints through sync and monitor factories with thin FTP entry points.
+- [x] 01-02-PLAN.md — Route FTP endpoints through sync and monitor factories with thin FTP entry points.
 
 ### Phase 2: FTP Driver Backend
 **Goal**: FTP endpoints behave like a usable remote storage backend inside the existing driver abstraction.

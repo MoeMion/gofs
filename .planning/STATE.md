@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-23T09:17:01.473Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-23T09:35:56.188Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-23)
 
 Phase: 01 (ftp-endpoint-contract-routing) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-23
 
 Progress: [█████░░░░░] 50%
@@ -51,6 +51,8 @@ Progress: [█████░░░░░] 50%
 - Last 5 plans: Phase 01-ftp-endpoint-contract-routing Plan 01 (34min)
 - Trend: Stable
 
+| Phase 01-ftp-endpoint-contract-routing P02 | 13min | 2 tasks | 7 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -63,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 4]: FTP verification must cover real protocol flows and clearly document plain-FTP-only limitations.
 - [Phase 01-ftp-endpoint-contract-routing]: FTP endpoints use dedicated ftp_* query parameters in core.VFS instead of reusing SSH field names.
 - [Phase 01-ftp-endpoint-contract-routing]: FTP endpoints default to port 21 when omitted, preserving existing VFS backend defaulting behavior.
+- [Phase 01-ftp-endpoint-contract-routing]: FTP routing now targets explicit FTP sync and monitor constructors that defer backend behavior to Phase 2.
+- [Phase 01-ftp-endpoint-contract-routing]: Factory regression tests assert FTP combinations avoid generic unsupported fallback paths.
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T09:17:01.457Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-23T09:35:56.171Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

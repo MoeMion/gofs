@@ -19,6 +19,9 @@ const (
 	testVFSSFTPSSHConfigDestPathWithNoPort          = "sftp://example.com?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_user=sftp_user&ssh_pass=sftp_pwd&ssh_key=./id_rsa&ssh_key_pass=123456&ssh_host_key=/root/.ssh/known_hosts&ssh_config=true"
 	testVFSSFTPSSHConfigDestPathWithCover           = "sftp://example.com:22?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_user=sftp_user&ssh_pass=sftp_pwd&ssh_key=./id_rsa&ssh_key_pass=123456&ssh_host_key=/root/.ssh/known_hosts&ssh_config=true"
 	testVFSSFTPSSHConfigDestPathWithDefaultIdentity = "sftp://default-identity?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_pass=sftp_pwd&ssh_config=true"
+	testVFSFTPSrcPath                               = "ftp://127.0.0.1:21?path=./dest&remote_path=/srv/source&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true"
+	testVFSFTPDestPath                              = "ftp://127.0.0.1:21?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true"
+	testVFSFTPDestPathWithNoPort                    = "ftp://127.0.0.1?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=false"
 	testVFSMinIODestPath                            = "minio://127.0.0.1:9000?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&secure=true"
 	testVFSMinIODestPathWithNoPort                  = "minio://127.0.0.1?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&secure=false"
 )
@@ -37,6 +40,9 @@ func TestVFS_MarshalText(t *testing.T) {
 		{testVFSSFTPSSHConfigDestPathWithNoPort},
 		{testVFSSFTPSSHConfigDestPathWithCover},
 		{testVFSSFTPSSHConfigDestPathWithDefaultIdentity},
+		{testVFSFTPSrcPath},
+		{testVFSFTPDestPath},
+		{testVFSFTPDestPathWithNoPort},
 		{testVFSMinIODestPath},
 		{testVFSMinIODestPathWithNoPort},
 	}
@@ -74,6 +80,9 @@ func TestVFS_UnmarshalText(t *testing.T) {
 		{testVFSSFTPSSHConfigDestPathWithNoPort},
 		{testVFSSFTPSSHConfigDestPathWithCover},
 		{testVFSSFTPSSHConfigDestPathWithDefaultIdentity},
+		{testVFSFTPSrcPath},
+		{testVFSFTPDestPath},
+		{testVFSFTPDestPathWithNoPort},
 		{testVFSMinIODestPath},
 		{testVFSMinIODestPathWithNoPort},
 	}
@@ -98,6 +107,7 @@ func TestNewVFS_WithDefaultPort(t *testing.T) {
 		expectPort int
 	}{
 		{testVFSServerPathWithNoPort, remoteServerDefaultPort},
+		{testVFSFTPDestPathWithNoPort, ftpServerDefaultPort},
 		{testVFSSFTPDestPathWithNoPort, sftpServerDefaultPort},
 	}
 
@@ -136,6 +146,7 @@ func TestNewVFS_ReturnError(t *testing.T) {
 	}{
 		{testVFSServerPath + string([]byte{127}), NewEmptyVFS()}, // 0x7F DEL
 		{testVFSSFTPDestPath + string([]byte{127}), NewEmptyVFS()},
+		{testVFSFTPDestPath + string([]byte{127}), NewEmptyVFS()},
 		{testVFSMinIODestPath + string([]byte{127}), NewEmptyVFS()},
 	}
 
@@ -181,6 +192,9 @@ func TestVFSVar(t *testing.T) {
 		{"testVFSSFTPSSHConfigDestPathWithNoPort", testVFSSFTPSSHConfigDestPathWithNoPort, NewEmptyVFS()},
 		{"testVFSSFTPSSHConfigDestPathWithCover", testVFSSFTPSSHConfigDestPathWithCover, NewEmptyVFS()},
 		{"testVFSSFTPSSHConfigDestPathWithDefaultIdentity", testVFSSFTPSSHConfigDestPathWithDefaultIdentity, NewEmptyVFS()},
+		{"testVFSFTPSrcPath", testVFSFTPSrcPath, NewEmptyVFS()},
+		{"testVFSFTPDestPath", testVFSFTPDestPath, NewEmptyVFS()},
+		{"testVFSFTPDestPathWithNoPort", testVFSFTPDestPathWithNoPort, NewEmptyVFS()},
 
 		{"testVFSMinIODestPath", testVFSMinIODestPath, NewEmptyVFS()},
 		{"testVFSMinIODestPathWithNoPort", testVFSMinIODestPathWithNoPort, NewEmptyVFS()},
@@ -230,6 +244,9 @@ func TestVFSFlag(t *testing.T) {
 
 		{"testVFSSFTPDestPath", testVFSSFTPDestPath, NewEmptyVFS()},
 		{"testVFSSFTPDestPathWithNoPort", testVFSSFTPDestPathWithNoPort, NewEmptyVFS()},
+		{"testVFSFTPSrcPath", testVFSFTPSrcPath, NewEmptyVFS()},
+		{"testVFSFTPDestPath", testVFSFTPDestPath, NewEmptyVFS()},
+		{"testVFSFTPDestPathWithNoPort", testVFSFTPDestPathWithNoPort, NewEmptyVFS()},
 	}
 
 	for _, tc := range testCases {
@@ -271,6 +288,12 @@ func compareVFS(t *testing.T, expect, actual VFS) {
 	assert(t, expect.FsServer() == actual.FsServer(), "compare vfs FsServer error, expect:%s, actual:%s", expect.FsServer(), actual.FsServer())
 	assert(t, expect.LocalSyncDisabled() == actual.LocalSyncDisabled(), "compare vfs LocalSyncDisabled error, expect:%v, actual:%v", expect.LocalSyncDisabled(), actual.LocalSyncDisabled())
 	assert(t, expect.Secure() == actual.Secure(), "compare vfs Secure error, expect:%v, actual:%v", expect.Secure(), actual.Secure())
+	expectFTPConfig := expect.FTPConfig()
+	actualFTPConfig := actual.FTPConfig()
+	assert(t, expectFTPConfig.Username == actualFTPConfig.Username, "compare vfs FTPConfig.Username error, expect:%v, actual:%v", expectFTPConfig.Username, actualFTPConfig.Username)
+	assert(t, expectFTPConfig.Password == actualFTPConfig.Password, "compare vfs FTPConfig.Password error, expect:%v, actual:%v", expectFTPConfig.Password, actualFTPConfig.Password)
+	assert(t, expectFTPConfig.Timeout == actualFTPConfig.Timeout, "compare vfs FTPConfig.Timeout error, expect:%v, actual:%v", expectFTPConfig.Timeout, actualFTPConfig.Timeout)
+	assert(t, expectFTPConfig.PassiveMode == actualFTPConfig.PassiveMode, "compare vfs FTPConfig.PassiveMode error, expect:%v, actual:%v", expectFTPConfig.PassiveMode, actualFTPConfig.PassiveMode)
 	expectSSHConfig := expect.SSHConfig()
 	actualSSHConfig := actual.SSHConfig()
 	assert(t, expectSSHConfig.Username == actualSSHConfig.Username, "compare vfs SSHConfig.Username error, expect:%v, actual:%v", expectSSHConfig.Username, actualSSHConfig.Username)
@@ -278,6 +301,44 @@ func compareVFS(t *testing.T, expect, actual VFS) {
 	assert(t, expectSSHConfig.Key == actualSSHConfig.Key, "compare vfs SSHConfig.Key error, expect:%v, actual:%v", expectSSHConfig.Key, actualSSHConfig.Key)
 	assert(t, expectSSHConfig.KeyPass == actualSSHConfig.KeyPass, "compare vfs SSHConfig.KeyPass error, expect:%v, actual:%v", expectSSHConfig.KeyPass, actualSSHConfig.KeyPass)
 	assert(t, expectSSHConfig.HostKey == actualSSHConfig.HostKey, "compare vfs SSHConfig.HostKey error, expect:%v, actual:%v", expectSSHConfig.HostKey, actualSSHConfig.HostKey)
+}
+
+func TestNewVFS_FTPConfig(t *testing.T) {
+	vfs := NewVFS(testVFSFTPDestPath)
+	if vfs.Type() != FTP {
+		t.Errorf("test ftp vfs type error, expect:%v, actual:%v", FTP, vfs.Type())
+	}
+	if vfs.FTPUsername() != "ftp_user" {
+		t.Errorf("test ftp username error, expect:%s, actual:%s", "ftp_user", vfs.FTPUsername())
+	}
+	if vfs.FTPPassword() != "ftp_pwd" {
+		t.Errorf("test ftp password error, expect:%s, actual:%s", "ftp_pwd", vfs.FTPPassword())
+	}
+	if vfs.FTPTimeout() != "30s" {
+		t.Errorf("test ftp timeout error, expect:%s, actual:%s", "30s", vfs.FTPTimeout())
+	}
+	if !vfs.FTPPassiveMode() {
+		t.Errorf("test ftp passive mode error, expect:true, actual:%v", vfs.FTPPassiveMode())
+	}
+	if vfs.SSHConfig() != (SSHConfig{}) {
+		t.Errorf("test ftp ssh config isolation error, expect empty ssh config, actual:%+v", vfs.SSHConfig())
+	}
+}
+
+func TestNewVFS_FTPConfigWithoutOptionalTimeout(t *testing.T) {
+	vfs := NewVFS(testVFSFTPDestPathWithNoPort)
+	if vfs.Type() != FTP {
+		t.Errorf("test ftp vfs type without port error, expect:%v, actual:%v", FTP, vfs.Type())
+	}
+	if vfs.Port() != ftpServerDefaultPort {
+		t.Errorf("test ftp default port error, expect:%d, actual:%d", ftpServerDefaultPort, vfs.Port())
+	}
+	if vfs.FTPTimeout() != "" {
+		t.Errorf("test ftp timeout optional error, expect empty, actual:%s", vfs.FTPTimeout())
+	}
+	if vfs.FTPPassiveMode() {
+		t.Errorf("test ftp passive mode false error, expect:false, actual:%v", vfs.FTPPassiveMode())
+	}
 }
 
 func assert(t *testing.T, ok bool, format string, args ...any) {

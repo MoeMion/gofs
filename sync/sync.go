@@ -71,6 +71,10 @@ func newSync(opt Option) (Sync, error) {
 		return NewSftpPushClientSync(opt)
 	} else if source.Is(core.SFTP) && dest.IsDisk() {
 		return NewSftpPullClientSync(opt)
+	} else if source.IsDisk() && dest.Is(core.FTP) {
+		return NewFTPPushClientSync(opt)
+	} else if source.Is(core.FTP) && dest.IsDisk() {
+		return NewFTPPullClientSync(opt)
 	} else if source.IsDisk() && dest.Is(core.MinIO) {
 		return NewMinIOPushClientSync(opt)
 	} else if source.Is(core.MinIO) && dest.IsDisk() {

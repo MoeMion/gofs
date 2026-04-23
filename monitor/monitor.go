@@ -35,6 +35,8 @@ func NewMonitor(opt Option, run runFn) (Monitor, error) {
 		return NewRemoteClientMonitor(opt)
 	} else if source.Is(core.SFTP) {
 		return NewSftpPullClientMonitor(opt)
+	} else if source.Is(core.FTP) {
+		return NewFTPPullClientMonitor(opt)
 	} else if source.Is(core.MinIO) {
 		return NewMinIOPullClientMonitor(opt)
 	}

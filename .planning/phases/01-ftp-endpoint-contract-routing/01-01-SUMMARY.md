@@ -60,7 +60,7 @@ Each task was committed atomically:
 1. **Task 1: Add FTP-specific VFS contract fields and parsing** - `a0f7000` (feat)
 2. **Task 2: Add FTP VFS round-trip and default-port tests** - `34dc223` (test)
 
-**Plan metadata:** pending
+**Plan metadata:** `4c8e75e` (docs)
 
 ## Files Created/Modified
 - `core/vfs.go` - Adds FTP scheme parsing, FTP-specific query constants, default port handling, and FTP getters/config storage.
@@ -82,7 +82,7 @@ Each task was committed atomically:
 - **Fix:** Continued plan execution, completed FTP-specific implementation and coverage, and documented the baseline verification limitation here instead of changing unrelated SSH behavior.
 - **Files modified:** `.planning/phases/01-ftp-endpoint-contract-routing/01-01-SUMMARY.md`
 - **Verification:** FTP-specific test code was added and `go test ./core -count=1` was re-run, showing failures only in existing SSH-config tests rather than FTP assertions.
-- **Committed in:** pending (plan metadata commit)
+- **Committed in:** `4c8e75e` (plan metadata commit)
 
 ---
 

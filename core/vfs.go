@@ -24,7 +24,20 @@ type VFS struct {
 	fsServer          string
 	localSyncDisabled bool
 	secure            bool
+	ftpConf           FTPConfig
 	sshConf           SSHConfig
+}
+
+// FTPConfig the config info for FTP authentication and transport.
+type FTPConfig struct {
+	// Username the username for FTP
+	Username string
+	// Password the password for FTP
+	Password string
+	// Timeout the connection timeout for FTP
+	Timeout string
+	// PassiveMode use passive mode for FTP
+	PassiveMode bool
 }
 
 const (
@@ -34,6 +47,10 @@ const (
 	paramFsServer           = "fs_server"
 	paramLocalSyncDisabled  = "local_sync_disabled"
 	paramSecure             = "secure"
+	paramFTPUsername        = "ftp_user"
+	paramFTPPassword        = "ftp_pass"
+	paramFTPTimeout         = "ftp_timeout"
+	paramFTPPassiveMode     = "ftp_passive"
 	paramSSHUsername        = "ssh_user"
 	paramSSHPassword        = "ssh_pass"
 	paramSSHKey             = "ssh_key"
@@ -45,6 +62,8 @@ const (
 	schemeDelimiter         = "://"
 	remoteServerScheme      = "rs"
 	remoteServerDefaultPort = 8105
+	ftpServerScheme         = "ftp"
+	ftpServerDefaultPort    = 21
 	sftpServerScheme        = "sftp"
 	sftpServerDefaultPort   = 22
 	minIOServerScheme       = "minio"
@@ -121,6 +140,31 @@ func (vfs *VFS) Secure() bool {
 	return vfs.secure
 }
 
+// FTPConfig returns the FTP config.
+func (vfs *VFS) FTPConfig() FTPConfig {
+	return vfs.ftpConf
+}
+
+// FTPUsername returns the FTP username.
+func (vfs *VFS) FTPUsername() string {
+	return vfs.ftpConf.Username
+}
+
+// FTPPassword returns the FTP password.
+func (vfs *VFS) FTPPassword() string {
+	return vfs.ftpConf.Password
+}
+
+// FTPTimeout returns the FTP timeout.
+func (vfs *VFS) FTPTimeout() string {
+	return vfs.ftpConf.Timeout
+}
+
+// FTPPassiveMode returns whether FTP passive mode is enabled.
+func (vfs *VFS) FTPPassiveMode() bool {
+	return vfs.ftpConf.PassiveMode
+}
+
 // SSHConfig returns the SSH config
 func (vfs *VFS) SSHConfig() SSHConfig {
 	return vfs.sshConf
@@ -152,13 +196,16 @@ func NewVFS(path string) VFS {
 	if strings.HasPrefix(lowerPath, remoteServerScheme+schemeDelimiter) {
 		// example of rs protocol to see README.md
 		vfs.fsType = RemoteDisk
-		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, _, err = parse(path, vfs.fsType)
+		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, _, _, err = parse(path, vfs.fsType)
+	} else if strings.HasPrefix(lowerPath, ftpServerScheme+schemeDelimiter) {
+		vfs.fsType = FTP
+		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, vfs.ftpConf, _, err = parse(path, vfs.fsType)
 	} else if strings.HasPrefix(lowerPath, sftpServerScheme+schemeDelimiter) {
 		vfs.fsType = SFTP
-		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, vfs.sshConf, err = parse(path, vfs.fsType)
+		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, _, vfs.sshConf, err = parse(path, vfs.fsType)
 	} else if strings.HasPrefix(lowerPath, minIOServerScheme+schemeDelimiter) {
 		vfs.fsType = MinIO
-		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, _, err = parse(path, vfs.fsType)
+		_, vfs.host, vfs.port, vfs.path, vfs.remotePath, vfs.server, vfs.fsServer, vfs.localSyncDisabled, vfs.secure, _, _, err = parse(path, vfs.fsType)
 	}
 	if err != nil {
 		return NewEmptyVFS()
@@ -166,7 +213,7 @@ func NewVFS(path string) VFS {
 	return vfs
 }
 
-func parse(path string, fsType VFSType) (scheme string, host string, port int, localPath Path, remotePath Path, isServer bool, fsServer string, localSyncDisabled bool, secure bool, sshConf SSHConfig, err error) {
+func parse(path string, fsType VFSType) (scheme string, host string, port int, localPath Path, remotePath Path, isServer bool, fsServer string, localSyncDisabled bool, secure bool, ftpConf FTPConfig, sshConf SSHConfig, err error) {
 	parseUrl, err := url.Parse(path)
 	if err != nil {
 		return
@@ -179,6 +226,10 @@ func parse(path string, fsType VFSType) (scheme string, host string, port int, l
 			port = remoteServerDefaultPort
 			err = nil
 			logger.InnerLogger().Info("no remote server source port is specified, use default port => %d", port)
+		} else if scheme == ftpServerScheme {
+			port = ftpServerDefaultPort
+			err = nil
+			logger.InnerLogger().Info("no ftp server destination port is specified, use default port => %d", port)
 		} else if scheme == sftpServerScheme {
 			port = sftpServerDefaultPort
 			err = nil
@@ -213,6 +264,13 @@ func parse(path string, fsType VFSType) (scheme string, host string, port int, l
 	isSecure := parseUrl.Query().Get(paramSecure)
 	if strings.ToLower(isSecure) == valueTrue {
 		secure = true
+	}
+
+	ftpConf.Username = strings.TrimSpace(parseUrl.Query().Get(paramFTPUsername))
+	ftpConf.Password = strings.TrimSpace(parseUrl.Query().Get(paramFTPPassword))
+	ftpConf.Timeout = strings.TrimSpace(parseUrl.Query().Get(paramFTPTimeout))
+	if strings.ToLower(strings.TrimSpace(parseUrl.Query().Get(paramFTPPassiveMode))) == valueTrue {
+		ftpConf.PassiveMode = true
 	}
 
 	// process ssh_config file

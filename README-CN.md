@@ -461,6 +461,8 @@ $ gofs -source="sftp://127.0.0.1:22?remote_path=/gofs_sftp_server&ssh_user=sftp_
 $ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
 ```
 
+FTP v1 限制说明：v1 仅支持明文 FTP，不支持 FTPS，并且必须设置 `ftp_passive=true`，因为当前不支持主动模式。
+
 ### FTP拉取客户端
 
 启动一个FTP拉取客户端，将文件从FTP服务器拉到本地目标路径
@@ -468,6 +470,15 @@ $ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server
 ```bash
 $ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
 ```
+
+FTP v1 限制说明：gofs 仅支持磁盘→FTP 与 FTP→磁盘，不支持 FTP↔FTP 同步，并且后端能力失败会显式报错，不会被静默忽略。
+
+### FTP v1限制
+
+- v1 仅支持明文 FTP，不支持 FTPS。
+- v1 仅支持被动模式，不支持主动模式。
+- 不支持 FTP↔FTP 同步；当前仅支持磁盘→FTP 与 FTP→磁盘。
+- 后端能力失败会显式暴露，而不是被静默忽略。
 
 ### MinIO推送客户端
 

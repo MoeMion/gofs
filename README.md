@@ -481,6 +481,8 @@ Start a FTP push client to sync change files to the FTP server.
 $ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
 ```
 
+FTP v1 limitation note: plain FTP only in v1, no FTPS, and `ftp_passive=true` is required because active mode is unsupported.
+
 ### FTP Pull Client
 
 Start a FTP pull client to pull the files from the FTP server to the local destination path.
@@ -488,6 +490,15 @@ Start a FTP pull client to pull the files from the FTP server to the local desti
 ```bash
 $ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
 ```
+
+FTP v1 limitation note: gofs supports disk→FTP and FTP→disk flows, but no FTP↔FTP sync, and backend capability failures surface explicitly instead of being ignored.
+
+### FTP v1 Limitations
+
+- plain FTP only in v1; FTPS is not supported.
+- Passive mode only in v1; active mode is unsupported.
+- no FTP↔FTP sync; supported directions are disk→FTP and FTP→disk.
+- Backend capability failures surface explicitly rather than being silently ignored.
 
 ### MinIO Push Client
 

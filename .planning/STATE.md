@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-ftp-driver-backend-01-PLAN.md
-last_updated: "2026-04-24T02:18:09.564Z"
+status: verifying
+stopped_at: Completed 02-ftp-driver-backend-02-PLAN.md
+last_updated: "2026-04-24T02:31:05.968Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-23)
 
 Phase: 02 (ftp-driver-backend) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-24
 
 Progress: [█████░░░░░] 50%
@@ -54,6 +54,7 @@ Progress: [█████░░░░░] 50%
 
 | Phase 01-ftp-endpoint-contract-routing P02 | 13min | 2 tasks | 7 files |
 | Phase 02-ftp-driver-backend P01 | 12min | 2 tasks | 6 files |
+| Phase 02-ftp-driver-backend P02 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 02-ftp-driver-backend]: FTP support stays inside driver.Driver using github.com/jlaffaye/ftp instead of adding FTP-specific sync logic. — This keeps the FTP backend aligned with existing SFTP and MinIO patterns and avoids spreading protocol-specific behavior into sync orchestration.
 - [Phase 02-ftp-driver-backend]: The FTP driver rejects active mode in v1 and returns explicit errors for unsupported symlink and time-setting operations. — The roadmap defers active FTP and requires truthful backend capability reporting so unsupported operations are visible instead of silently succeeding.
 - [Phase 02-ftp-driver-backend]: Reconnect handling is serialized and bounded to a single retry after transport-loss detection inside the driver. — This satisfies the conservative retry requirement while preserving the sync layer's existing protocol-agnostic behavior.
+- [Phase 02-ftp-driver-backend]: FTP sync constructors now instantiate ftp.NewFTPDriver through thin package-local factories so production wiring stays direct while tests can assert routing without opening network connections.
+- [Phase 02-ftp-driver-backend]: FTP pull sync resets sourceAbsPath, statFn, and getFileTimeFn after startup so generic pull comparison logic uses the FTP driver metadata policy instead of disk defaults.
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T02:17:40.617Z
-Stopped at: Completed 02-ftp-driver-backend-01-PLAN.md
+Last session: 2026-04-24T02:31:05.949Z
+Stopped at: Completed 02-ftp-driver-backend-02-PLAN.md
 Resume file: None

@@ -13,7 +13,7 @@ This roadmap adds FTP to gofs as a minimal-change client-side sync backend by ex
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: FTP Endpoint Contract & Routing** - Make FTP endpoints configurable and reachable through existing factory paths.
-- [ ] **Phase 2: FTP Driver Backend** - Add the FTP backend operations the sync engine depends on.
+- [x] **Phase 2: FTP Driver Backend** - Add the FTP backend operations the sync engine depends on. (completed 2026-04-24)
 - [ ] **Phase 3: One-Way FTP Sync Flows** - Enable disk→FTP and FTP→disk flows using existing sync semantics.
 - [ ] **Phase 4: FTP Verification & Discoverability** - Prove the FTP path with automated tests and user-facing documentation.
 
@@ -46,7 +46,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Implement the FTP driver package with conservative metadata and bounded reconnect behavior.
-- [ ] 02-02-PLAN.md — Replace FTP sync placeholders with driver-backed push/pull constructors and regression tests.
+- [x] 02-02-PLAN.md — Replace FTP sync placeholders with driver-backed push/pull constructors and regression tests.
 
 ### Phase 3: One-Way FTP Sync Flows
 **Goal**: Users can run the intended one-way sync workflows between local disk and FTP without changing gofs sync semantics.
@@ -78,6 +78,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. FTP Endpoint Contract & Routing | 1/2 | In Progress | - |
-| 2. FTP Driver Backend | 1/2 | In Progress|  |
+| 2. FTP Driver Backend | 2/2 | Complete   | 2026-04-24 |
 | 3. One-Way FTP Sync Flows | 0/TBD | Not started | - |
 | 4. FTP Verification & Discoverability | 0/TBD | Not started | - |

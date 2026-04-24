@@ -453,6 +453,22 @@ $ gofs -source="./source" -dest="sftp://127.0.0.1:22?local_sync_disabled=false&p
 $ gofs -source="sftp://127.0.0.1:22?remote_path=/gofs_sftp_server&ssh_user=sftp_user&ssh_pass=sftp_pwd" -dest="./dest" -sync_once
 ```
 
+### FTP推送客户端
+
+启动一个FTP推送客户端，将发生变更的文件同步到FTP服务器
+
+```bash
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
+```
+
+### FTP拉取客户端
+
+启动一个FTP拉取客户端，将文件从FTP服务器拉到本地目标路径
+
+```bash
+$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
+```
+
 ### MinIO推送客户端
 
 启动一个MinIO推送客户端，将发生变更的文件同步到MinIO服务器

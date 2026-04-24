@@ -473,6 +473,22 @@ Start a SFTP pull client to pull the files from the SFTP server to the local des
 $ gofs -source="sftp://127.0.0.1:22?remote_path=/gofs_sftp_server&ssh_user=sftp_user&ssh_pass=sftp_pwd" -dest="./dest" -sync_once
 ```
 
+### FTP Push Client
+
+Start a FTP push client to sync change files to the FTP server.
+
+```bash
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
+```
+
+### FTP Pull Client
+
+Start a FTP pull client to pull the files from the FTP server to the local destination path.
+
+```bash
+$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
+```
+
 ### MinIO Push Client
 
 Start a MinIO push client to sync change files to the MinIO server.

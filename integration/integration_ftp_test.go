@@ -11,8 +11,8 @@ func TestIntegration_FTP(t *testing.T) {
 		runClientConf string
 		testConf      string
 	}{
-		{"gofs FTP push", "", "run-gofs-ftp-push-client.yaml", "test-gofs-ftp-push.yaml"},
-		{"gofs FTP pull", "", "run-gofs-ftp-pull-client.yaml", "test-gofs-ftp-pull.yaml"},
+		{"gofs FTP push real server", "", "run-gofs-ftp-push-client.yaml", "test-gofs-ftp-push.yaml"},
+		{"gofs FTP pull real server", "", "run-gofs-ftp-pull-client.yaml", "test-gofs-ftp-pull.yaml"},
 	}
 
 	for _, tc := range testCases {

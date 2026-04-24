@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/no-src/gofs/driver"
 	"github.com/no-src/nsgo/fsutil"
@@ -55,6 +56,11 @@ func (s *driverPullClientSync) Write(path string) error {
 
 // write try to write a file to the destination
 func (s *driverPullClientSync) write(path, dest string) error {
+	sourceStat, err := s.driver.Stat(path)
+	if err != nil {
+		return err
+	}
+
 	sourceFile, err := s.driver.Open(path)
 	if err != nil {
 		return err
@@ -62,11 +68,6 @@ func (s *driverPullClientSync) write(path, dest string) error {
 	defer func() {
 		s.logger.ErrorIf(sourceFile.Close(), "[%s pull client sync] [write] close the source file error", s.driver.DriverName())
 	}()
-
-	sourceStat, err := sourceFile.Stat()
-	if err != nil {
-		return err
-	}
 
 	destStat, err := os.Stat(dest)
 	if err != nil {
@@ -103,17 +104,31 @@ func (s *driverPullClientSync) write(path, dest string) error {
 	}
 
 	n, err := reader.WriteTo(writer)
+	if isFTPSuccessReplyError(err) {
+		err = nil
+	}
 	if err != nil {
 		return err
 	}
 
 	err = writer.Flush()
+	if isFTPSuccessReplyError(err) {
+		err = nil
+	}
 
 	if err == nil {
 		s.logger.Info("[driver-pull] [write] [success] size[%d => %d] [%s] => [%s]", sourceSize, n, path, dest)
 		s.chtimes(path, dest)
 	}
 	return err
+}
+
+func isFTPSuccessReplyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "226 transfer complete") || strings.Contains(message, "250 listing") || strings.Contains(message, "end mlsd") || strings.Contains(message, "end mlst")
 }
 
 func (s *driverPullClientSync) Remove(path string) error {

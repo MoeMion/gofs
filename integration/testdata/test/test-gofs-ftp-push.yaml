@@ -1,0 +1,63 @@
+name: test for gofs FTP push
+init:
+  - mkdir:
+    source: ./source
+  - mkdir:
+    source: ./source/nested/level
+  - cp:
+    source: ./integration_test.go
+    dest: ./source/nested/level/push.txt
+  - echo:
+    source: ./source/nested/level/push.txt
+    input: FTP push updated
+    append: true
+    no-newline: false
+  - cp:
+    source: ./integration_test.go
+    dest: ./source/rename-me.txt
+  - touch:
+    source: ./source/delete-me.txt
+  - echo:
+    source: ./source/delete-me.txt
+    input: remove me
+    append: false
+  - mv:
+    source: ./source/rename-me.txt
+    dest: ./source/renamed.txt
+  - rm:
+    source: ./source/delete-me.txt
+actions:
+  - sleep: 10s
+  - is-equal:
+    source: ./source/nested/level/push.txt
+    dest: ./ftp-workspace/ftp-push/nested/level/push.txt
+    expect: true
+    must-non-empty: true
+  - is-dir:
+    source: ./ftp-workspace/ftp-push/nested
+    expect: true
+  - is-dir:
+    source: ./ftp-workspace/ftp-push/nested/level
+    expect: true
+  - is-exist:
+    source: ./ftp-workspace/ftp-push/renamed.txt
+    expect: true
+  - is-exist:
+    source: ./ftp-workspace/ftp-push/rename-me.txt
+    expect: false
+  - is-exist:
+    source: ./ftp-workspace/ftp-push/delete-me.txt
+    expect: false
+  - hash:
+    algorithm: sha1
+    source: ./ftp-workspace/ftp-push/nested/level/push.txt
+    expect: 4e12778c7f5fe2957b1c90d693f69bc90c8c1211
+clear:
+  - rm:
+    source: ./source
+  - rm:
+    source: ./dest
+  - rm:
+    source: ./ftp-push-client-logs
+  - rm:
+    source: ./ftp-workspace/ftp-push

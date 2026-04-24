@@ -1,0 +1,61 @@
+name: test for gofs FTP pull
+init:
+  - mkdir:
+    source: ./dest
+  - mkdir:
+    source: ./ftp-workspace/ftp-pull/nested/level
+  - cp:
+    source: ./integration_sftp_test.go
+    dest: ./ftp-workspace/ftp-pull/nested/level/pull.txt
+  - echo:
+    source: ./ftp-workspace/ftp-pull/nested/level/pull.txt
+    input: FTP pull updated
+    append: true
+    no-newline: false
+  - cp:
+    source: ./integration_sftp_test.go
+    dest: ./ftp-workspace/ftp-pull/rename-me.txt
+  - touch:
+    source: ./ftp-workspace/ftp-pull/delete-me.txt
+  - echo:
+    source: ./ftp-workspace/ftp-pull/delete-me.txt
+    input: remove me
+    append: false
+  - mv:
+    source: ./ftp-workspace/ftp-pull/rename-me.txt
+    dest: ./ftp-workspace/ftp-pull/renamed.txt
+  - rm:
+    source: ./ftp-workspace/ftp-pull/delete-me.txt
+actions:
+  - sleep: 10s
+  - is-equal:
+    source: ./ftp-workspace/ftp-pull/nested/level/pull.txt
+    dest: ./dest/nested/level/pull.txt
+    expect: true
+    must-non-empty: true
+  - is-dir:
+    source: ./dest/nested
+    expect: true
+  - is-dir:
+    source: ./dest/nested/level
+    expect: true
+  - is-exist:
+    source: ./dest/renamed.txt
+    expect: true
+  - is-exist:
+    source: ./dest/rename-me.txt
+    expect: false
+  - is-exist:
+    source: ./dest/delete-me.txt
+    expect: false
+  - hash:
+    algorithm: sha1
+    source: ./dest/nested/level/pull.txt
+    expect: a7fe7844631a673ad263c80b5fe0f2cb84a385e3
+clear:
+  - rm:
+    source: ./dest
+  - rm:
+    source: ./ftp-pull-client-logs
+  - rm:
+    source: ./ftp-workspace/ftp-pull

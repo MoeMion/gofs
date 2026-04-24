@@ -333,12 +333,16 @@ func (d *ftpDriver) Chtimes(path string, aTime time.Time, mTime time.Time) error
 }
 
 func (d *ftpDriver) WalkDir(root string, fn fs.WalkDirFunc) error {
-	return d.reconnectIfLost(func(client ftpConn) error {
+	type walkEntry struct {
+		path  string
+		entry fs.DirEntry
+	}
+	entries := make([]walkEntry, 0, 16)
+	err := d.reconnectIfLost(func(client ftpConn) error {
 		walker := client.Walk(cleanFTPPath(root))
 		for {
 			next := walker.Next()
-			err := walker.Err()
-			if err != nil {
+			if err := walker.Err(); err != nil {
 				return err
 			}
 			if !next {
@@ -349,11 +353,21 @@ func (d *ftpDriver) WalkDir(root string, fn fs.WalkDirFunc) error {
 				continue
 			}
 			fi := newFTPFileInfo(entry, walker.Path(), d.listTimePrecise)
-			if err := fn(walker.Path(), fs.FileInfoToDirEntry(fi), nil); err != nil {
-				return err
-			}
+			entries = append(entries, walkEntry{
+				path:  walker.Path(),
+				entry: fs.FileInfoToDirEntry(fi),
+			})
 		}
 	})
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := fn(entry.path, entry.entry, nil); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *ftpDriver) Open(path string) (http.File, error) {

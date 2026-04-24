@@ -1,0 +1,4 @@
+source: ftp://127.0.0.1:2121?remote_path=ftp-pull&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true
+dest: ./dest
+log_dir: ./ftp-pull-client-logs/
+sync_once: true

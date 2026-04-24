@@ -1,10 +1,12 @@
 package ftp
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"net/http"
 	"path"
+	"strings"
 
 	ftp "github.com/jlaffaye/ftp"
 )
@@ -28,11 +30,22 @@ func newFTPFile(resp *ftp.Response, client ftpConn, name string, listTimePrecise
 
 func (f *ftpFile) Close() error {
 	f.closed = true
-	return f.resp.Close()
+	err := f.resp.Close()
+	if isFTPSuccessReply(err) {
+		return nil
+	}
+	return err
 }
 
 func (f *ftpFile) Read(p []byte) (n int, err error) {
-	return f.resp.Read(p)
+	n, err = f.resp.Read(p)
+	if err != nil && isFTPSuccessReply(err) {
+		if n > 0 {
+			return n, nil
+		}
+		return 0, io.EOF
+	}
+	return n, err
 }
 
 func (f *ftpFile) Seek(offset int64, whence int) (int64, error) {
@@ -104,4 +117,12 @@ func (f *ftpDirFile) Stat() (fs.FileInfo, error) {
 		return nil, err
 	}
 	return newFTPFileInfo(entry, f.name, f.listTimePrecise), nil
+}
+
+func isFTPSuccessReply(err error) bool {
+	if err == nil || errors.Is(err, io.EOF) {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "226 transfer complete") || strings.Contains(message, "250 listing") || strings.Contains(message, "end mlsd") || strings.Contains(message, "end mlst")
 }

@@ -291,6 +291,17 @@ func (s *diskSync) write(path, dest string) error {
 
 // chtimes change file times
 func (s *diskSync) chtimes(source, dest string) error {
+	destStat, statErr := os.Stat(dest)
+	if statErr == nil && destStat.IsDir() {
+		isDir, err := s.IsDir(source)
+		if err != nil {
+			s.logger.Warn("[write] get source dir state error => %s =>[%s]", err.Error(), source)
+			return nil
+		}
+		if isDir {
+			return nil
+		}
+	}
 	_, aTime, mTime, err := s.getFileTimeFn(source)
 	if err == nil {
 		if err = os.Chtimes(dest, aTime, mTime); err != nil {

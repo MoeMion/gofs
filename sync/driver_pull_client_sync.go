@@ -75,8 +75,12 @@ func (s *driverPullClientSync) write(path, dest string) error {
 
 	sourceSize := sourceStat.Size()
 	destSize := destStat.Size()
+	sourceModTime := sourceStat.ModTime()
+	if _, _, mTime, err := s.getFileTimeFn(path); err == nil && !mTime.IsZero() {
+		sourceModTime = mTime
+	}
 
-	if s.hash.QuickCompare(s.forceChecksum, sourceSize, destSize, sourceStat.ModTime(), destStat.ModTime()) {
+	if s.hash.QuickCompare(s.forceChecksum, sourceSize, destSize, sourceModTime, destStat.ModTime()) {
 		s.logger.Debug("[%s pull client sync] [write] [ignored], the file size and file modification time are both unmodified => %s", s.driver.DriverName(), path)
 		return nil
 	}

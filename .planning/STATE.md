@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-04-23T09:35:56.188Z"
-last_activity: 2026-04-23
+status: executing
+stopped_at: Completed 02-ftp-driver-backend-01-PLAN.md
+last_updated: "2026-04-24T02:18:09.564Z"
+last_activity: 2026-04-24
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-23)
 
 **Core value:** Add FTP as a first-class sync endpoint with the smallest correct change set, so gofs can cover one more common file transfer protocol without disrupting the existing architecture.
-**Current focus:** Phase 01 — ftp-endpoint-contract-routing
+**Current focus:** Phase 02 — ftp-driver-backend
 
 ## Current Position
 
-Phase: 01 (ftp-endpoint-contract-routing) — EXECUTING
+Phase: 02 (ftp-driver-backend) — EXECUTING
 Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-04-23
+Status: Ready to execute
+Last activity: 2026-04-24
 
 Progress: [█████░░░░░] 50%
 
@@ -36,7 +36,7 @@ Progress: [█████░░░░░] 50%
 
 **Velocity:**
 
-- Total plans completed: 1
+- Total plans completed: 3
 - Average duration: 34min
 - Total execution time: 0.6 hours
 
@@ -45,6 +45,7 @@ Progress: [█████░░░░░] 50%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-ftp-endpoint-contract-routing | 1 | 34min | 34min |
+| 01 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -52,6 +53,7 @@ Progress: [█████░░░░░] 50%
 - Trend: Stable
 
 | Phase 01-ftp-endpoint-contract-routing P02 | 13min | 2 tasks | 7 files |
+| Phase 02-ftp-driver-backend P01 | 12min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -67,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase 01-ftp-endpoint-contract-routing]: FTP endpoints default to port 21 when omitted, preserving existing VFS backend defaulting behavior.
 - [Phase 01-ftp-endpoint-contract-routing]: FTP routing now targets explicit FTP sync and monitor constructors that defer backend behavior to Phase 2.
 - [Phase 01-ftp-endpoint-contract-routing]: Factory regression tests assert FTP combinations avoid generic unsupported fallback paths.
+- [Phase 02-ftp-driver-backend]: FTP support stays inside driver.Driver using github.com/jlaffaye/ftp instead of adding FTP-specific sync logic. — This keeps the FTP backend aligned with existing SFTP and MinIO patterns and avoids spreading protocol-specific behavior into sync orchestration.
+- [Phase 02-ftp-driver-backend]: The FTP driver rejects active mode in v1 and returns explicit errors for unsupported symlink and time-setting operations. — The roadmap defers active FTP and requires truthful backend capability reporting so unsupported operations are visible instead of silently succeeding.
+- [Phase 02-ftp-driver-backend]: Reconnect handling is serialized and bounded to a single retry after transport-loss detection inside the driver. — This satisfies the conservative retry requirement while preserving the sync layer's existing protocol-agnostic behavior.
 
 ### Pending Todos
 
@@ -88,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T09:35:56.171Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-04-24T02:17:40.617Z
+Stopped at: Completed 02-ftp-driver-backend-01-PLAN.md
 Resume file: None

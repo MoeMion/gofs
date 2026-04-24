@@ -42,7 +42,11 @@ Plans:
   2. The sync engine can inspect nested files and directories on FTP endpoints well enough to compare remote state against local state.
   3. The system can upload, download, create directories, delete entries, and rename entries on FTP endpoints when sync behavior requires those actions.
   4. FTP-backed comparisons and operations remain usable across normal transient connection interruptions, with documented size and modification-time comparison caveats.
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [x] 02-01-PLAN.md — Implement the FTP driver package with conservative metadata and bounded reconnect behavior.
+- [ ] 02-02-PLAN.md — Replace FTP sync placeholders with driver-backed push/pull constructors and regression tests.
 
 ### Phase 3: One-Way FTP Sync Flows
 **Goal**: Users can run the intended one-way sync workflows between local disk and FTP without changing gofs sync semantics.
@@ -74,6 +78,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. FTP Endpoint Contract & Routing | 1/2 | In Progress | - |
-| 2. FTP Driver Backend | 0/TBD | Not started | - |
+| 2. FTP Driver Backend | 1/2 | In Progress|  |
 | 3. One-Way FTP Sync Flows | 0/TBD | Not started | - |
 | 4. FTP Verification & Discoverability | 0/TBD | Not started | - |

@@ -16,15 +16,15 @@ Requirements for the FTP support milestone. Each will map to exactly one roadmap
 
 ### FTP Driver Capabilities
 
-- [ ] **FTPD-01**: System can connect to an FTP server and authenticate with configured credentials
-- [ ] **FTPD-02**: System can recursively list and traverse files and directories on an FTP endpoint
-- [ ] **FTPD-03**: System can upload a file from local storage to an FTP endpoint
-- [ ] **FTPD-04**: System can download a file from an FTP endpoint to local storage
-- [ ] **FTPD-05**: System can create required directories on an FTP endpoint during sync
-- [ ] **FTPD-06**: System can delete files and directories on an FTP endpoint when sync policy requires removal
-- [ ] **FTPD-07**: System can rename files or directories on an FTP endpoint when sync flow requires rename handling
-- [ ] **FTPD-08**: System can compare FTP-side file state using size and modification time with documented precision caveats
-- [ ] **FTPD-09**: System can recover from transient FTP connection failures using conservative reconnect or retry behavior
+- [x] **FTPD-01**: System can connect to an FTP server and authenticate with configured credentials
+- [x] **FTPD-02**: System can recursively list and traverse files and directories on an FTP endpoint
+- [x] **FTPD-03**: System can upload a file from local storage to an FTP endpoint
+- [x] **FTPD-04**: System can download a file from an FTP endpoint to local storage
+- [x] **FTPD-05**: System can create required directories on an FTP endpoint during sync
+- [x] **FTPD-06**: System can delete files and directories on an FTP endpoint when sync policy requires removal
+- [x] **FTPD-07**: System can rename files or directories on an FTP endpoint when sync flow requires rename handling
+- [x] **FTPD-08**: System can compare FTP-side file state using size and modification time with documented precision caveats
+- [x] **FTPD-09**: System can recover from transient FTP connection failures using conservative reconnect or retry behavior
 
 ### Sync Flows
 
@@ -74,15 +74,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FTP-02 | Phase 1 | Complete |
 | FTP-03 | Phase 1 | Complete |
 | FTP-04 | Phase 1 | Complete |
-| FTPD-01 | Phase 2 | Pending |
-| FTPD-02 | Phase 2 | Pending |
-| FTPD-03 | Phase 2 | Pending |
-| FTPD-04 | Phase 2 | Pending |
-| FTPD-05 | Phase 2 | Pending |
-| FTPD-06 | Phase 2 | Pending |
-| FTPD-07 | Phase 2 | Pending |
-| FTPD-08 | Phase 2 | Pending |
-| FTPD-09 | Phase 2 | Pending |
+| FTPD-01 | Phase 2 | Complete |
+| FTPD-02 | Phase 2 | Complete |
+| FTPD-03 | Phase 2 | Complete |
+| FTPD-04 | Phase 2 | Complete |
+| FTPD-05 | Phase 2 | Complete |
+| FTPD-06 | Phase 2 | Complete |
+| FTPD-07 | Phase 2 | Complete |
+| FTPD-08 | Phase 2 | Complete |
+| FTPD-09 | Phase 2 | Complete |
 | SYNC-01 | Phase 3 | Pending |
 | SYNC-02 | Phase 3 | Pending |
 | SYNC-03 | Phase 3 | Pending |

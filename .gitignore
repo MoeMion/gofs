@@ -24,3 +24,7 @@ go.work
 .vscode/
 bin/
 .run/
+.planning/
+scripts/ftp/.vendor/
+scripts/ftp/ftp-server.log
+scripts/ftp/ftp-server.pid

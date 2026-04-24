@@ -49,12 +49,20 @@ jobs:
         run: chmod +x ./scripts/minio/*.sh && ./scripts/minio/install-minio.sh && ./scripts/minio/mount-minio.sh
         if: matrix.os == 'ubuntu-latest'
 
+      - name: Init FTP
+        run: chmod +x ./scripts/ftp/*.sh && ./scripts/ftp/init-ftp.sh
+        if: matrix.os == 'ubuntu-latest'
+
       - name: Test Integration MinIO
         run: go test -v -race -tags=integration_test_minio ./integration
         if: matrix.os == 'ubuntu-latest'
 
       - name: Test Integration SFTP
         run: go test -v -race -tags=integration_test_sftp ./integration
+        if: matrix.os == 'ubuntu-latest'
+
+      - name: Test Integration FTP
+        run: go test -v -race -tags=integration_test_ftp ./integration
         if: matrix.os == 'ubuntu-latest'
 
       - name: Codecov

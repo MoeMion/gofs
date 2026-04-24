@@ -29,8 +29,8 @@ Requirements for the FTP support milestone. Each will map to exactly one roadmap
 ### Sync Flows
 
 - [ ] **SYNC-01**: User can run sync from local disk to an FTP destination
-- [ ] **SYNC-02**: User can run sync from an FTP source to local disk
-- [ ] **SYNC-03**: System preserves existing one-way sync semantics for FTP-backed flows without introducing bidirectional conflict resolution
+- [x] **SYNC-02**: User can run sync from an FTP source to local disk
+- [x] **SYNC-03**: System preserves existing one-way sync semantics for FTP-backed flows without introducing bidirectional conflict resolution
 - [ ] **SYNC-04**: A second sync run with no file changes does not produce unnecessary file transfers for supported FTP metadata conditions
 
 ### Verification and Documentation
@@ -84,8 +84,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FTPD-08 | Phase 2 | Complete |
 | FTPD-09 | Phase 2 | Complete |
 | SYNC-01 | Phase 3 | Pending |
-| SYNC-02 | Phase 3 | Pending |
-| SYNC-03 | Phase 3 | Pending |
+| SYNC-02 | Phase 3 | Complete |
+| SYNC-03 | Phase 3 | Complete |
 | SYNC-04 | Phase 3 | Pending |
 | TEST-01 | Phase 4 | Pending |
 | TEST-02 | Phase 4 | Pending |

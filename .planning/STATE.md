@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 02-ftp-driver-backend-02-PLAN.md
-last_updated: "2026-04-24T02:31:05.968Z"
+status: executing
+stopped_at: Completed 03-one-way-ftp-sync-flows-01-PLAN.md
+last_updated: "2026-04-24T04:07:57.831Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-23)
 
 **Core value:** Add FTP as a first-class sync endpoint with the smallest correct change set, so gofs can cover one more common file transfer protocol without disrupting the existing architecture.
-**Current focus:** Phase 02 — ftp-driver-backend
+**Current focus:** Phase 03 — one-way-ftp-sync-flows
 
 ## Current Position
 
-Phase: 02 (ftp-driver-backend) — EXECUTING
+Phase: 03 (one-way-ftp-sync-flows) — EXECUTING
 Plan: 2 of 2
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-04-24
 
 Progress: [█████░░░░░] 50%
@@ -36,7 +36,7 @@ Progress: [█████░░░░░] 50%
 
 **Velocity:**
 
-- Total plans completed: 3
+- Total plans completed: 5
 - Average duration: 34min
 - Total execution time: 0.6 hours
 
@@ -46,6 +46,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01-ftp-endpoint-contract-routing | 1 | 34min | 34min |
 | 01 | 2 | - | - |
+| 02 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -55,6 +56,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01-ftp-endpoint-contract-routing P02 | 13min | 2 tasks | 7 files |
 | Phase 02-ftp-driver-backend P01 | 12min | 2 tasks | 6 files |
 | Phase 02-ftp-driver-backend P02 | 12min | 2 tasks | 4 files |
+| Phase 03-one-way-ftp-sync-flows P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 02-ftp-driver-backend]: Reconnect handling is serialized and bounded to a single retry after transport-loss detection inside the driver. — This satisfies the conservative retry requirement while preserving the sync layer's existing protocol-agnostic behavior.
 - [Phase 02-ftp-driver-backend]: FTP sync constructors now instantiate ftp.NewFTPDriver through thin package-local factories so production wiring stays direct while tests can assert routing without opening network connections.
 - [Phase 02-ftp-driver-backend]: FTP pull sync resets sourceAbsPath, statFn, and getFileTimeFn after startup so generic pull comparison logic uses the FTP driver metadata policy instead of disk defaults.
+- [Phase 03-one-way-ftp-sync-flows]: FTP source startup is rejected unless sync_once or sync_cron is configured, so long-running FTP mode never appears healthy while doing nothing.
+- [Phase 03-one-way-ftp-sync-flows]: FTP source monitoring reuses driverPullClientMonitor directly and adds only protocol-specific startup gating instead of introducing new FTP orchestration logic.
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T02:31:05.949Z
-Stopped at: Completed 02-ftp-driver-backend-02-PLAN.md
+Last session: 2026-04-24T04:07:57.805Z
+Stopped at: Completed 03-one-way-ftp-sync-flows-01-PLAN.md
 Resume file: None

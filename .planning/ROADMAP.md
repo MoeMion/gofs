@@ -57,7 +57,11 @@ Plans:
   2. User can run a sync from an FTP source to local disk and see expected file additions and updates appear on the local filesystem.
   3. FTP-backed sync runs preserve existing one-way behavior, including delete or rename handling where supported, without introducing bidirectional conflict resolution.
   4. A second sync run with no eligible file changes does not perform unnecessary transfers under the supported FTP metadata conditions.
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [x] 03-01-PLAN.md — Replace the FTP source monitor placeholder with a real polling monitor and truthful startup behavior.
+- [ ] 03-02-PLAN.md — Lock down one-way FTP flow semantics and conservative no-op behavior with targeted sync tests.
 
 ### Phase 4: FTP Verification & Discoverability
 **Goal**: Users and maintainers can trust and adopt the FTP path because it is tested against realistic flows and documented clearly.
@@ -79,5 +83,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. FTP Endpoint Contract & Routing | 1/2 | In Progress | - |
 | 2. FTP Driver Backend | 2/2 | Complete   | 2026-04-24 |
-| 3. One-Way FTP Sync Flows | 0/TBD | Not started | - |
+| 3. One-Way FTP Sync Flows | 0/2 | Planned | - |
 | 4. FTP Verification & Discoverability | 0/TBD | Not started | - |

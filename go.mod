@@ -8,6 +8,7 @@ require (
 	github.com/gin-contrib/pprof v1.5.2
 	github.com/gin-contrib/sessions v1.0.2
 	github.com/gin-gonic/gin v1.10.0
+	github.com/jlaffaye/ftp v0.2.0
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/minio/minio-go/v7 v7.0.94
 	github.com/no-src/fsctl v0.1.3
@@ -55,6 +56,8 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect

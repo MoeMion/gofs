@@ -28,18 +28,18 @@ Requirements for the FTP support milestone. Each will map to exactly one roadmap
 
 ### Sync Flows
 
-- [ ] **SYNC-01**: User can run sync from local disk to an FTP destination
+- [x] **SYNC-01**: User can run sync from local disk to an FTP destination
 - [x] **SYNC-02**: User can run sync from an FTP source to local disk
 - [x] **SYNC-03**: System preserves existing one-way sync semantics for FTP-backed flows without introducing bidirectional conflict resolution
-- [ ] **SYNC-04**: A second sync run with no file changes does not produce unnecessary file transfers for supported FTP metadata conditions
+- [x] **SYNC-04**: A second sync run with no file changes does not produce unnecessary file transfers for supported FTP metadata conditions
 
 ### Verification and Documentation
 
-- [ ] **TEST-01**: Automated tests verify `disk→FTP` sync behavior against an FTP test server
-- [ ] **TEST-02**: Automated tests verify `FTP→disk` sync behavior against an FTP test server
-- [ ] **TEST-03**: Automated tests cover nested paths plus delete or rename behavior on the FTP path
-- [ ] **DOC-01**: User-facing documentation includes at least one working FTP configuration example
-- [ ] **DOC-02**: User-facing documentation states the v1 FTP limitations, including plain FTP only and no FTP↔FTP sync
+- [x] **TEST-01**: Automated tests verify `disk→FTP` sync behavior against an FTP test server
+- [x] **TEST-02**: Automated tests verify `FTP→disk` sync behavior against an FTP test server
+- [x] **TEST-03**: Automated tests cover nested paths plus delete or rename behavior on the FTP path
+- [x] **DOC-01**: User-facing documentation includes at least one working FTP configuration example
+- [x] **DOC-02**: User-facing documentation states the v1 FTP limitations, including plain FTP only and no FTP↔FTP sync
 
 ## v2 Requirements
 
@@ -83,15 +83,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FTPD-07 | Phase 2 | Complete |
 | FTPD-08 | Phase 2 | Complete |
 | FTPD-09 | Phase 2 | Complete |
-| SYNC-01 | Phase 3 | Pending |
+| SYNC-01 | Phase 3 | Complete |
 | SYNC-02 | Phase 3 | Complete |
 | SYNC-03 | Phase 3 | Complete |
-| SYNC-04 | Phase 3 | Pending |
-| TEST-01 | Phase 4 | Pending |
-| TEST-02 | Phase 4 | Pending |
-| TEST-03 | Phase 4 | Pending |
-| DOC-01 | Phase 4 | Pending |
-| DOC-02 | Phase 4 | Pending |
+| SYNC-04 | Phase 3 | Complete |
+| TEST-01 | Phase 4 | Complete |
+| TEST-02 | Phase 4 | Complete |
+| TEST-03 | Phase 4 | Complete |
+| DOC-01 | Phase 4 | Complete |
+| DOC-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 22 total

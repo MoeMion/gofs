@@ -14,8 +14,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: FTP Endpoint Contract & Routing** - Make FTP endpoints configurable and reachable through existing factory paths.
 - [x] **Phase 2: FTP Driver Backend** - Add the FTP backend operations the sync engine depends on. (completed 2026-04-24)
-- [ ] **Phase 3: One-Way FTP Sync Flows** - Enable disk→FTP and FTP→disk flows using existing sync semantics.
-- [ ] **Phase 4: FTP Verification & Discoverability** - Prove the FTP path with automated tests and user-facing documentation.
+- [x] **Phase 3: One-Way FTP Sync Flows** - Enable disk→FTP and FTP→disk flows using existing sync semantics. (completed 2026-04-24)
+- [x] **Phase 4: FTP Verification & Discoverability** - Prove the FTP path with automated tests and user-facing documentation. (completed 2026-04-24)
 
 ## Phase Details
 
@@ -61,7 +61,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — Replace the FTP source monitor placeholder with a real polling monitor and truthful startup behavior.
-- [ ] 03-02-PLAN.md — Lock down one-way FTP flow semantics and conservative no-op behavior with targeted sync tests.
+- [x] 03-02-PLAN.md — Lock down one-way FTP flow semantics and conservative no-op behavior with targeted sync tests.
 
 ### Phase 4: FTP Verification & Discoverability
 **Goal**: Users and maintainers can trust and adopt the FTP path because it is tested against realistic flows and documented clearly.
@@ -72,7 +72,12 @@ Plans:
   2. Automated coverage proves nested path handling plus delete or rename behavior on the FTP path.
   3. User-facing documentation includes at least one working FTP configuration example.
   4. User-facing documentation clearly states the v1 FTP limitations, including plain FTP only and no FTP↔FTP sync.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [x] 04-01-PLAN.md — Add repo-owned FTP integration bootstrap and fixture files for real push/pull verification.
+- [x] 04-02-PLAN.md — Add the tagged FTP integration suite and CI workflow execution.
+- [x] 04-03-PLAN.md — Add FTP push/pull examples and explicit v1 limitations to both READMEs.
 
 ## Progress
 
@@ -83,5 +88,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. FTP Endpoint Contract & Routing | 1/2 | In Progress | - |
 | 2. FTP Driver Backend | 2/2 | Complete   | 2026-04-24 |
-| 3. One-Way FTP Sync Flows | 0/2 | Planned | - |
-| 4. FTP Verification & Discoverability | 0/TBD | Not started | - |
+| 3. One-Way FTP Sync Flows | 2/2 | Complete | 2026-04-24 |
+| 4. FTP Verification & Discoverability | 3/3 | Complete | 2026-04-24 |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-one-way-ftp-sync-flows-01-PLAN.md
-last_updated: "2026-04-24T04:07:57.831Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-24T09:02:04.579Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-23)
 
 **Core value:** Add FTP as a first-class sync endpoint with the smallest correct change set, so gofs can cover one more common file transfer protocol without disrupting the existing architecture.
-**Current focus:** Phase 03 — one-way-ftp-sync-flows
+**Current focus:** Phase 04 — ftp-verification-discoverability complete
 
 ## Current Position
 
-Phase: 03 (one-way-ftp-sync-flows) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Phase: 04 (ftp-verification-discoverability) — COMPLETE
+Plan: 3 of 3
+Status: Phase complete
 Last activity: 2026-04-24
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -57,6 +57,9 @@ Progress: [█████░░░░░] 50%
 | Phase 02-ftp-driver-backend P01 | 12min | 2 tasks | 6 files |
 | Phase 02-ftp-driver-backend P02 | 12min | 2 tasks | 4 files |
 | Phase 03-one-way-ftp-sync-flows P01 | 2min | 2 tasks | 3 files |
+| Phase 03-one-way-ftp-sync-flows P02 | 1min | 2 tasks | 3 files |
+| Phase 04-ftp-verification-discoverability P03 | 3min | 2 tasks | 2 files |
+| Phase 04-ftp-verification-discoverability P02 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +82,13 @@ Recent decisions affecting current work:
 - [Phase 02-ftp-driver-backend]: FTP pull sync resets sourceAbsPath, statFn, and getFileTimeFn after startup so generic pull comparison logic uses the FTP driver metadata policy instead of disk defaults.
 - [Phase 03-one-way-ftp-sync-flows]: FTP source startup is rejected unless sync_once or sync_cron is configured, so long-running FTP mode never appears healthy while doing nothing.
 - [Phase 03-one-way-ftp-sync-flows]: FTP source monitoring reuses driverPullClientMonitor directly and adds only protocol-specific startup gating instead of introducing new FTP orchestration logic.
+- [Phase 03-one-way-ftp-sync-flows]: FTP pull quick-compare now prefers driver GetFileTime metadata when available so coarse listing timestamps cannot cause a false no-op skip.
+- [Phase 03-one-way-ftp-sync-flows]: FTP one-way flow regression coverage stays in package-level sync tests with narrow fakes rather than a live FTP server in Phase 3.
+- [Phase 04-ftp-verification-discoverability]: Document FTP examples with the shipped ftp_* query parameters instead of userinfo-style FTP URLs so README guidance matches the real VFS contract.
+- [Phase 04-ftp-verification-discoverability]: Place FTP v1 limitations directly beneath the examples and in a dedicated list so plain-FTP-only, passive-only, no FTP↔FTP, and explicit capability failure behavior are hard to miss.
+- [Phase 04-ftp-verification-discoverability]: Kept the FTP integration entrypoint thin and made subtest names explicitly call out real-server push and pull coverage for clearer CI failures.
+- [Phase 04-ftp-verification-discoverability]: Wired FTP into the existing Ubuntu-only backend setup section in the Go workflow so FTP verification follows the same CI pattern as SFTP and MinIO.
+- [Phase 04-ftp-verification-discoverability]: Ignored FTP bootstrap runtime artifacts in .gitignore so repeated verification does not leave untracked vendor, pid, or log files behind.
 
 ### Pending Todos
 
@@ -100,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T04:07:57.805Z
-Stopped at: Completed 03-one-way-ftp-sync-flows-01-PLAN.md
+Last session: 2026-04-24T09:02:04.554Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

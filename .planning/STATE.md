@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-04-27T09:52:56.911Z"
-last_activity: 2026-04-27 -- Phase 08 planning complete
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-04-27T10:06:47.330Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
-  percent: 69
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Provide a focused Go package for reliable FTP file synchronization without requiring the existing CLI/server runtime.
-**Current focus:** Phase 07 — background-disk-ftp-lifecycle
+**Current focus:** Phase 08 — ftp-only-package-reduction
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (ftp-only-package-reduction) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-04-27 -- Phase 08 planning complete
+Last activity: 2026-04-27
 
 Progress: [████░░░░░░] 40%
 
@@ -68,6 +68,7 @@ Progress: [████░░░░░░] 40%
 | Phase 07-background-disk-ftp-lifecycle P01 | 4min | 2 tasks | 5 files |
 | Phase 07-background-disk-ftp-lifecycle P02 | 5min | 2 tasks | 2 files |
 | Phase 07-background-disk-ftp-lifecycle P03 | 4min | 2 tasks | 3 files |
+| Phase 08-ftp-only-package-reduction P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Recent decisions affecting current work:
 - [Phase 07-background-disk-ftp-lifecycle]: Background Stop now waits for the active sync worker before closing Done, so embedders can trust Wait as a full lifecycle barrier.
 - [Phase 07-background-disk-ftp-lifecycle]: Handle.Err remains the latest runtime health signal while Handle.Wait returns only the terminal lifecycle result after Done closes.
 - [Phase 07-background-disk-ftp-lifecycle]: Background sync policy remains local-to-FTP only; FTP-to-local background attempts continue to return ErrUnsupportedCapability.
+- [Phase 08]: Added executable Phase 8 package reduction guards before extraction: dependency blacklist currently fails on legacy runtime imports, while public API reflection guard passes typed-options-only contracts.
 
 ### Pending Todos
 
@@ -127,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T09:47:16.519Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-ftp-only-package-reduction/08-CONTEXT.md
+Last session: 2026-04-27T10:04:59.857Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None

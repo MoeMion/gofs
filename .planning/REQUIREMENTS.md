@@ -34,10 +34,10 @@ Requirements for converting the existing FTP synchronization capability into a f
 
 ### Package Reduction
 
-- [ ] **PRUNE-01**: Library build no longer depends on CLI entrypoints, flag parsing, daemon/process management, HTTP file server, gRPC APIs, task runtime, auth/session, SFTP, MinIO, or Docker release surfaces
+- [x] **PRUNE-01**: Library build no longer depends on CLI entrypoints, flag parsing, daemon/process management, HTTP file server, gRPC APIs, task runtime, auth/session, SFTP, MinIO, or Docker release surfaces
 - [ ] **PRUNE-02**: FTP driver, path encoding, retry, ignore/filtering, rate limiting, and core disk/FTP sync internals remain available behind the public library API
-- [ ] **PRUNE-03**: Internal packages do not leak old `conf.Config`, `core.VFS`, CLI URL parsing, or server/task types into the public `ftpsync` API
-- [ ] **PRUNE-04**: `go.mod` is tidied so removed runtime surfaces no longer keep unnecessary dependencies such as Gin, gRPC, SFTP, MinIO, Redis/cache, QUIC, OAuth, and protobuf packages
+- [x] **PRUNE-03**: Internal packages do not leak old `conf.Config`, `core.VFS`, CLI URL parsing, or server/task types into the public `ftpsync` API
+- [x] **PRUNE-04**: `go.mod` is tidied so removed runtime surfaces no longer keep unnecessary dependencies such as Gin, gRPC, SFTP, MinIO, Redis/cache, QUIC, OAuth, and protobuf packages
 
 ### Verification and Documentation
 
@@ -96,10 +96,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WATCH-03 | Phase 7 | Complete |
 | WATCH-04 | Phase 7 | Complete |
 | WATCH-05 | Phase 7 | Complete |
-| PRUNE-01 | Phase 8 | Pending |
+| PRUNE-01 | Phase 8 | Complete |
 | PRUNE-02 | Phase 8 | Pending |
-| PRUNE-03 | Phase 8 | Pending |
-| PRUNE-04 | Phase 8 | Pending |
+| PRUNE-03 | Phase 8 | Complete |
+| PRUNE-04 | Phase 8 | Complete |
 | VERIFY-01 | Phase 9 | Pending |
 | VERIFY-02 | Phase 9 | Pending |
 | VERIFY-03 | Phase 9 | Pending |

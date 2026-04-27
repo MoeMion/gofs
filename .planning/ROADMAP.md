@@ -51,7 +51,11 @@ See archived milestone artifacts:
   3. Developer receives explicit validation failures for unsupported or ambiguous endpoint combinations before transfer work starts.
   4. Developer can pass `context.Context` to public sync methods and distinguish validation, cancellation, connection/authentication, transfer, and unsupported-capability errors.
   5. Developer can attach optional logging, progress, and sync event hooks, while the default service remains no-op and library-local.
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 05-01-PLAN.md — Create the public ftpsync typed option surface and FTPSyncService constructor without legacy runtime imports.
+- [ ] 05-02-PLAN.md — Add explicit validation plus context-aware public method and structured error contracts.
+- [ ] 05-03-PLAN.md — Add optional no-op logging, progress, and sync event hooks isolated from global runtime reporting.
 
 ### Phase 6: One-Shot Disk↔FTP Sync Through Library API
 **Goal**: Developers can run one-shot local disk→FTP and FTP→local disk synchronization through `FTPSyncService` with the existing FTP v1 transfer semantics preserved.

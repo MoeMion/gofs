@@ -19,6 +19,7 @@ type backgroundHandle struct {
 	ready  chan struct{}
 
 	stopOnce sync.Once
+	workers  sync.WaitGroup
 	mu       sync.Mutex
 	current  error
 	final    error
@@ -54,7 +55,9 @@ func (h *backgroundHandle) Err() error {
 
 func (h *backgroundHandle) Wait() error {
 	<-h.done
-	return h.Err()
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.final
 }
 
 func (h *backgroundHandle) Stop(ctx context.Context) error {
@@ -64,14 +67,18 @@ func (h *backgroundHandle) Stop(ctx context.Context) error {
 	h.stopOnce.Do(h.cancel)
 	select {
 	case <-h.done:
-		return h.Err()
+		return h.Wait()
 	case <-ctx.Done():
 		return newError(ErrCanceled, "StartBackground stop context canceled", ctx.Err())
 	}
 }
 
 func (h *backgroundHandle) run(ctx context.Context, svc *FTPSyncService) {
-	defer close(h.done)
+	defer func() {
+		h.cancel()
+		h.workers.Wait()
+		close(h.done)
+	}()
 	h.runInitialSync(ctx, svc)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -94,7 +101,11 @@ func (h *backgroundHandle) run(ctx context.Context, svc *FTPSyncService) {
 	}
 
 	trigger := make(chan struct{}, 1)
-	go h.runSyncTriggers(ctx, svc, trigger)
+	h.workers.Add(1)
+	go func() {
+		defer h.workers.Done()
+		h.runSyncTriggers(ctx, svc, trigger)
+	}()
 	close(h.ready)
 	h.runWatchLoop(ctx, watcher, trigger)
 	if err := ctx.Err(); err != nil && err != context.Canceled {

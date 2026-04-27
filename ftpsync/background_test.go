@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -194,6 +195,163 @@ func TestBackgroundSyncFailureIsObservableAndNonTerminal(t *testing.T) {
 	}
 }
 
+func TestBackgroundStopShutsDownDeterministically(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	secondStarted := make(chan struct{})
+	releaseSecond := make(chan struct{})
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		pass := atomic.AddInt32(&syncPasses, 1)
+		if pass == 2 {
+			close(secondStarted)
+			<-ctx.Done()
+			<-releaseSecond
+		}
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+	if err := os.WriteFile(filepath.Join(sourceRoot, "stop-during-sync.txt"), []byte("stop"), 0o644); err != nil {
+		t.Fatalf("write stop trigger: %v", err)
+	}
+	select {
+	case <-secondStarted:
+	case <-time.After(time.Second):
+		t.Fatalf("expect second sync to start")
+	}
+	stopReturned := make(chan error, 1)
+	go func() {
+		stopReturned <- handle.Stop(context.Background())
+	}()
+	select {
+	case err := <-stopReturned:
+		t.Fatalf("Stop returned before in-flight sync worker exited: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseSecond)
+	select {
+	case err := <-stopReturned:
+		if err != nil {
+			t.Fatalf("Stop returned error: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("expect Stop to return after worker exits")
+	}
+	if err := handle.Wait(); err != nil {
+		t.Fatalf("Wait returned error: %v", err)
+	}
+	select {
+	case <-handle.Done():
+	case <-time.After(time.Second):
+		t.Fatalf("expect Done to close after Stop")
+	}
+}
+
+func TestBackgroundContextCancelStopsRunner(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(t.TempDir()))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(ctx)
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	waitReady(t, handle)
+	cancel()
+	if err := waitBackground(handle, time.Second); err != nil {
+		t.Fatalf("Wait returned error after cancel: %v", err)
+	}
+}
+
+func TestBackgroundStopAndCancelRaceIdempotent(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(t.TempDir()))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(ctx)
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	waitReady(t, handle)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = handle.Stop(context.Background())
+		}()
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		cancel()
+	}()
+	wg.Wait()
+	if err := waitBackground(handle, time.Second); err != nil {
+		t.Fatalf("Wait returned error after stop/cancel race: %v", err)
+	}
+}
+
+func TestBackgroundWaitReturnsFinalError(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		pass := atomic.AddInt32(&syncPasses, 1)
+		if pass == 2 {
+			return newError(ErrTransfer, "simulated steady-state failure", errors.New("upload failed"))
+		}
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+	if err := os.WriteFile(filepath.Join(sourceRoot, "fail-before-stop.txt"), []byte("fail"), 0o644); err != nil {
+		t.Fatalf("write failure trigger: %v", err)
+	}
+	waitForSyncPasses(t, &syncPasses, 2)
+	if err := handle.Err(); err == nil || !IsKind(err, ErrTransfer) {
+		t.Fatalf("expected latest runtime transfer failure, got %v", err)
+	}
+	if err := handle.Stop(context.Background()); err != nil {
+		t.Fatalf("Stop returned final error instead of clean shutdown: %v", err)
+	}
+	if err := handle.Wait(); err != nil {
+		t.Fatalf("Wait returned latest runtime error instead of final result: %v", err)
+	}
+}
+
 func completeLocalToFTPOptionsForBackground() Options {
 	return completeLocalToFTPOptionsForBackgroundRoot("/data/source")
 }
@@ -242,5 +400,18 @@ func waitForSyncPasses(t *testing.T, syncPasses *int32, want int32) {
 				return
 			}
 		}
+	}
+}
+
+func waitBackground(handle Handle, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- handle.Wait()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return errors.New("background wait timed out")
 	}
 }

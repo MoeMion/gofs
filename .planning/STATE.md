@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-04-27T08:22:52.360Z"
-last_activity: 2026-04-27 -- Phase 7 planning complete
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-04-27T08:47:18.286Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
-  percent: 67
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Provide a focused Go package for reliable FTP file synchronization without requiring the existing CLI/server runtime.
-**Current focus:** Phase 7 — Background Disk→FTP Lifecycle
+**Current focus:** Phase 07 — background-disk-ftp-lifecycle
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
+Phase: 07 (background-disk-ftp-lifecycle) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-27 -- Phase 7 planning complete
+Last activity: 2026-04-27
 
 Progress: [████░░░░░░] 40%
 
@@ -64,6 +64,7 @@ Progress: [████░░░░░░] 40%
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P01 | 12min | 2 tasks | 8 files |
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P02 | 8min | 2 tasks | 4 files |
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P03 | 18min | 2 tasks | 4 files |
+| Phase 07-background-disk-ftp-lifecycle P01 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 06-one-shot-disk-ftp-sync-through-library-api]: Left legacy dependency breadth in place for now and explicitly deferred package-graph reduction to Phase 8 instead of expanding this plan beyond minimal correct local→FTP execution.
 - [Phase 06-one-shot-disk-ftp-sync-through-library-api]: Implemented FTP→local one-shot as a library-side best-effort walker rather than direct legacy SyncOnce so later paths still run after file-level failures.
 - [Phase 06-one-shot-disk-ftp-sync-through-library-api]: Enforced explicit destination-root creation and cwd-safety at the public API layer for FTP→local pulls.
+- [Phase 07-background-disk-ftp-lifecycle]: Kept StartBackground available only for DirectionLocalToFTP and preserved ErrUnsupportedCapability method/direction context for FTP→local background attempts.
+- [Phase 07-background-disk-ftp-lifecycle]: Added Wait() to the public Handle interface so embedders have explicit wait-for-exit semantics instead of polling Done/Err manually.
+- [Phase 07-background-disk-ftp-lifecycle]: Implemented initial background startup as a dedicated catch-up step that reuses executeSyncOnce and records failures on the handle before readiness.
 
 ### Pending Todos
 
@@ -115,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T08:07:23.363Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-background-disk-ftp-lifecycle/07-CONTEXT.md
+Last session: 2026-04-27T08:47:18.255Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None

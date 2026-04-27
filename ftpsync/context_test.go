@@ -156,6 +156,9 @@ func TestContextAwarePublicContractsCompile(t *testing.T) {
 	var handle ftpsync.Handle
 	_ = result
 	_ = handle
+	if handle != nil {
+		_ = handle.Wait()
+	}
 
 	svc, err := ftpsync.NewFTPSyncService(completeLocalToFTPOptions())
 	if err != nil {

@@ -3,6 +3,7 @@ package ftpsync
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 var errInvalidOptions = errors.New("invalid ftpsync options")
@@ -15,7 +16,16 @@ type FTPSyncService struct {
 
 // Result is the public summary contract returned by one-shot sync calls.
 type Result struct {
-	Direction Direction
+	Direction            Direction
+	SourceRoot           string
+	DestinationRoot      string
+	StartedAt            time.Time
+	CompletedAt          time.Time
+	PathsVisited         int
+	FilesAttempted       int
+	DirectoriesAttempted int
+	FailureCount         int
+	Partial              bool
 }
 
 // Handle is the public lifecycle contract returned by background sync calls.
@@ -52,7 +62,7 @@ func (s *FTPSyncService) SyncOnce(ctx context.Context) (Result, error) {
 	if err := validateContext(ctx, "SyncOnce"); err != nil {
 		return Result{}, err
 	}
-	return Result{}, unsupportedMethod("SyncOnce", s.opts.Direction)
+	return executeSyncOnce(ctx, s)
 }
 
 // StartBackground validates options and context before starting background sync.

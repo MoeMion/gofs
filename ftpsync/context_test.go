@@ -82,9 +82,12 @@ func TestSyncOnceChecksValidationAndContext(t *testing.T) {
 		t.Fatalf("expect typed cancellation error, got %v", err)
 	}
 
-	_, err = svc.SyncOnce(context.Background())
-	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
-		t.Fatalf("expect unsupported one-shot capability until implementation phase, got %v", err)
+	result, err := svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("expect SyncOnce scaffolding to succeed after validation, got %v", err)
+	}
+	if result.Direction != ftpsync.DirectionLocalToFTP {
+		t.Fatalf("expect one-shot result direction, got %#v", result)
 	}
 }
 

@@ -1,6 +1,9 @@
 package ftpsync
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // ErrorKind identifies a class of public FTPSyncService failures.
 type ErrorKind string
@@ -65,4 +68,16 @@ func IsKind(err error, kind ErrorKind) bool {
 
 func newError(kind ErrorKind, message string, cause error) *Error {
 	return &Error{KindValue: kind, Message: message, Cause: cause}
+}
+
+func newTransferError(message string, cause error) *Error {
+	return newError(ErrTransfer, sanitizeErrorMessage(message), cause)
+}
+
+func sanitizeErrorMessage(message string) string {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return "transfer failed"
+	}
+	return message
 }

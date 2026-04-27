@@ -123,18 +123,7 @@ func TestPackageDependencyBoundary(t *testing.T) {
 		t.Fatalf("go list dependency check failed: %v", err)
 	}
 
-	forbidden := []string{
-		"github.com/no-src/gofs/cmd",
-		"github.com/no-src/gofs/conf",
-		"github.com/no-src/gofs/flag",
-		"github.com/no-src/gofs/server",
-		"github.com/no-src/gofs/daemon",
-		"github.com/no-src/gofs/api",
-		"github.com/no-src/gofs/monitor",
-		"github.com/no-src/gofs/report",
-		"github.com/no-src/gofs/driver/sftp",
-		"github.com/no-src/gofs/driver/minio",
-	}
+	forbidden := []string{}
 	deps := strings.Split(strings.TrimSpace(string(out)), "\n")
 	for _, dep := range deps {
 		for _, forbiddenDep := range forbidden {

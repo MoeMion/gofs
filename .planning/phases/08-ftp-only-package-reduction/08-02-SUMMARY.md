@@ -62,7 +62,7 @@ Each task was committed atomically:
 1. **Task 1: Introduce package-local FTP and retry helpers** - `b72c339` (feat)
 2. **Task 2: Remove legacy adapter imports from one-shot execution** - `3d0cc13` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** `837d004` (docs)
 
 ## Files Created/Modified
 

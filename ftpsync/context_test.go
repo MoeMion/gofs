@@ -60,3 +60,85 @@ func TestContextCancellationErrorKind(t *testing.T) {
 		t.Fatalf("expect cancellation error kind")
 	}
 }
+
+func TestSyncOnceChecksValidationAndContext(t *testing.T) {
+	var invalid ftpsync.FTPSyncService
+	_, err := invalid.SyncOnce(context.Background())
+	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrValidation) {
+		t.Fatalf("expect validation error before sync dispatch, got %v", err)
+	}
+
+	svc, err := ftpsync.NewFTPSyncService(completeLocalToFTPOptions())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = svc.SyncOnce(ctx)
+	if err == nil {
+		t.Fatalf("expect canceled context to fail")
+	}
+	if !errors.Is(err, context.Canceled) || !ftpsync.IsKind(err, ftpsync.ErrCanceled) {
+		t.Fatalf("expect typed cancellation error, got %v", err)
+	}
+
+	_, err = svc.SyncOnce(context.Background())
+	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
+		t.Fatalf("expect unsupported one-shot capability until implementation phase, got %v", err)
+	}
+}
+
+func TestStartBackgroundChecksValidationAndContext(t *testing.T) {
+	var invalid ftpsync.FTPSyncService
+	_, err := invalid.StartBackground(context.Background())
+	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrValidation) {
+		t.Fatalf("expect validation error before background dispatch, got %v", err)
+	}
+
+	svc, err := ftpsync.NewFTPSyncService(completeLocalToFTPOptions())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = svc.StartBackground(ctx)
+	if err == nil {
+		t.Fatalf("expect canceled context to fail")
+	}
+	if !errors.Is(err, context.Canceled) || !ftpsync.IsKind(err, ftpsync.ErrCanceled) {
+		t.Fatalf("expect typed cancellation error, got %v", err)
+	}
+
+	_, err = svc.StartBackground(context.Background())
+	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
+		t.Fatalf("expect unsupported background capability until implementation phase, got %v", err)
+	}
+}
+
+func TestStartBackgroundRejectsFTPToLocal(t *testing.T) {
+	svc, err := ftpsync.NewFTPSyncService(completeFTPToLocalOptions())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	_, err = svc.StartBackground(context.Background())
+	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
+		t.Fatalf("expect FTP to local background to be unsupported, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "StartBackground") || !strings.Contains(err.Error(), string(ftpsync.DirectionFTPToLocal)) {
+		t.Fatalf("expect method and direction context in unsupported error, got %v", err)
+	}
+}
+
+func TestContextAwarePublicContractsCompile(t *testing.T) {
+	var result ftpsync.Result
+	var handle ftpsync.Handle
+	_ = result
+	_ = handle
+
+	svc, err := ftpsync.NewFTPSyncService(completeLocalToFTPOptions())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	_, _ = svc.SyncOnce(context.Background())
+	_, _ = svc.StartBackground(context.Background())
+}

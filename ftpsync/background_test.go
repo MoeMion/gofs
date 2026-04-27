@@ -3,6 +3,9 @@ package ftpsync
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -78,10 +81,79 @@ func TestStartBackgroundInitialSyncBeforeReady(t *testing.T) {
 	}
 }
 
+func TestBackgroundDebouncesBurstEvents(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		atomic.AddInt32(&syncPasses, 1)
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	defer func() { _ = handle.Stop(context.Background()) }()
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+
+	for i := 0; i < 5; i++ {
+		if err := os.WriteFile(filepath.Join(sourceRoot, "burst.txt"), []byte{byte(i)}, 0o644); err != nil {
+			t.Fatalf("write burst file: %v", err)
+		}
+	}
+	waitForSyncPasses(t, &syncPasses, 2)
+	time.Sleep(backgroundDebounceDelay * 3)
+	if got := atomic.LoadInt32(&syncPasses); got != 2 {
+		t.Fatalf("expected burst to coalesce into one follow-up sync pass, got %d", got)
+	}
+}
+
+func TestBackgroundWatchesNewDirectories(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		atomic.AddInt32(&syncPasses, 1)
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	defer func() { _ = handle.Stop(context.Background()) }()
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+
+	nested := filepath.Join(sourceRoot, "nested")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("create nested directory: %v", err)
+	}
+	waitForSyncPasses(t, &syncPasses, 2)
+	if err := os.WriteFile(filepath.Join(nested, "child.txt"), []byte("child"), 0o644); err != nil {
+		t.Fatalf("write nested child: %v", err)
+	}
+	waitForSyncPasses(t, &syncPasses, 3)
+}
+
 func completeLocalToFTPOptionsForBackground() Options {
+	return completeLocalToFTPOptionsForBackgroundRoot("/data/source")
+}
+
+func completeLocalToFTPOptionsForBackgroundRoot(sourceRoot string) Options {
 	return Options{
 		Direction: DirectionLocalToFTP,
-		Source:    Endpoint{LocalPath: "/data/source"},
+		Source:    Endpoint{LocalPath: sourceRoot},
 		Destination: Endpoint{FTP: FTPOptions{
 			Host:         "ftp.example.test",
 			Port:         21,
@@ -92,5 +164,35 @@ func completeLocalToFTPOptionsForBackground() Options {
 			Timeout:      15 * time.Second,
 			PathEncoding: "utf-8",
 		}},
+	}
+}
+
+func waitReady(t *testing.T, handle Handle) {
+	t.Helper()
+	readyHandle, ok := handle.(interface{ Ready() <-chan struct{} })
+	if !ok {
+		t.Fatalf("background handle should expose internal readiness for tests")
+	}
+	select {
+	case <-readyHandle.Ready():
+	case <-time.After(time.Second):
+		t.Fatalf("expect background handle readiness")
+	}
+}
+
+func waitForSyncPasses(t *testing.T, syncPasses *int32, want int32) {
+	t.Helper()
+	deadline := time.After(2 * time.Second)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("expected at least %d sync passes, got %d", want, atomic.LoadInt32(syncPasses))
+		case <-ticker.C:
+			if atomic.LoadInt32(syncPasses) >= want {
+				return
+			}
+		}
 	}
 }

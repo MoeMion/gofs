@@ -22,14 +22,14 @@ func validateOptions(opts Options) error {
 	switch opts.Direction {
 	case DirectionLocalToFTP:
 		if opts.Source.LocalPath == "" || opts.Destination.FTP.Host == "" || opts.Destination.FTP.RemotePath == "" {
-			return errInvalidOptions
+			return newError(ErrValidation, "invalid local_to_ftp endpoint fields", errInvalidOptions)
 		}
 	case DirectionFTPToLocal:
 		if opts.Source.FTP.Host == "" || opts.Source.FTP.RemotePath == "" || opts.Destination.LocalPath == "" {
-			return errInvalidOptions
+			return newError(ErrValidation, "invalid ftp_to_local endpoint fields", errInvalidOptions)
 		}
 	default:
-		return errInvalidOptions
+		return newError(ErrValidation, "invalid direction", errInvalidOptions)
 	}
 
 	return nil

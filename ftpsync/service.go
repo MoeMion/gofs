@@ -132,6 +132,9 @@ func validateFTPFields(name string, ftp FTPOptions) error {
 	if ftp.Port <= 0 {
 		return newError(ErrValidation, name+" port must be positive", errInvalidOptions)
 	}
+	if ftp.Timeout < 0 {
+		return newError(ErrValidation, name+" timeout must be non-negative", errInvalidOptions)
+	}
 	return nil
 }
 

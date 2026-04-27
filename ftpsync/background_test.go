@@ -195,6 +195,49 @@ func TestBackgroundSyncFailureIsObservableAndNonTerminal(t *testing.T) {
 	}
 }
 
+func TestBackgroundRunsFollowUpSyncForEventsDuringActiveSync(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	secondStarted := make(chan struct{})
+	releaseSecond := make(chan struct{})
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		pass := atomic.AddInt32(&syncPasses, 1)
+		if pass == 2 {
+			close(secondStarted)
+			<-releaseSecond
+		}
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	defer func() { _ = handle.Stop(context.Background()) }()
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+
+	if err := os.WriteFile(filepath.Join(sourceRoot, "during-sync-1.txt"), []byte("first"), 0o644); err != nil {
+		t.Fatalf("write first trigger: %v", err)
+	}
+	select {
+	case <-secondStarted:
+	case <-time.After(time.Second):
+		t.Fatalf("expect second sync to start")
+	}
+	if err := os.WriteFile(filepath.Join(sourceRoot, "during-sync-2.txt"), []byte("second"), 0o644); err != nil {
+		t.Fatalf("write trigger during active sync: %v", err)
+	}
+	time.Sleep(backgroundDebounceDelay * 2)
+	close(releaseSecond)
+	waitForSyncPasses(t, &syncPasses, 3)
+}
+
 func TestBackgroundStopShutsDownDeterministically(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	var syncPasses int32

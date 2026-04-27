@@ -3,6 +3,7 @@ package ftpsync_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/no-src/gofs/ftpsync"
 )
@@ -42,6 +43,8 @@ func TestValidateRejectsUnsupportedEndpointCombinations(t *testing.T) {
 		{name: "missing FTP destination host", opts: withDestinationFTPHost(completeLocalToFTPOptions(), ""), kind: ftpsync.ErrValidation},
 		{name: "missing FTP destination remote path", opts: withDestinationFTPRemotePath(completeLocalToFTPOptions(), ""), kind: ftpsync.ErrValidation},
 		{name: "invalid FTP destination port", opts: withDestinationFTPPort(completeLocalToFTPOptions(), -1), kind: ftpsync.ErrValidation},
+		{name: "invalid FTP destination timeout", opts: withDestinationFTPTimeout(completeLocalToFTPOptions(), -1), kind: ftpsync.ErrValidation},
+		{name: "invalid FTP source timeout", opts: withSourceFTPTimeout(completeFTPToLocalOptions(), -1), kind: ftpsync.ErrValidation},
 		{name: "ambiguous local to FTP source", opts: withSourceFTP(completeLocalToFTPOptions(), completeFTPToLocalOptions().Source.FTP), kind: ftpsync.ErrValidation},
 		{name: "ambiguous local to FTP destination", opts: withDestinationLocalPath(completeLocalToFTPOptions(), "/also-local"), kind: ftpsync.ErrValidation},
 		{name: "mismatched direction source and destination", opts: ftpsync.Options{Direction: ftpsync.DirectionFTPToLocal, Source: ftpsync.Endpoint{LocalPath: "/src"}, Destination: completeLocalToFTPOptions().Destination}, kind: ftpsync.ErrUnsupportedCapability},
@@ -106,6 +109,16 @@ func withDestinationFTPRemotePath(opts ftpsync.Options, path string) ftpsync.Opt
 
 func withDestinationFTPPort(opts ftpsync.Options, port int) ftpsync.Options {
 	opts.Destination.FTP.Port = port
+	return opts
+}
+
+func withDestinationFTPTimeout(opts ftpsync.Options, timeout int) ftpsync.Options {
+	opts.Destination.FTP.Timeout = time.Duration(timeout)
+	return opts
+}
+
+func withSourceFTPTimeout(opts ftpsync.Options, timeout int) ftpsync.Options {
+	opts.Source.FTP.Timeout = time.Duration(timeout)
 	return opts
 }
 

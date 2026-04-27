@@ -180,11 +180,27 @@ func (h *backgroundHandle) runSyncTriggers(ctx context.Context, svc *FTPSyncServ
 			if !ok {
 				return
 			}
+		}
+
+		for {
 			if _, err := executeSyncOnce(ctx, svc); err != nil {
 				svc.log("StartBackground sync pass failed: " + err.Error())
 				svc.reportEvent(SyncEvent{Operation: "background_sync", Path: svc.opts.Source.LocalPath, Status: "failed", ErrorKind: backgroundErrorKind(err)})
 				h.setCurrent(err)
 			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-trigger:
+				if !ok {
+					return
+				}
+				continue
+			default:
+				break
+			}
+			break
 		}
 	}
 }

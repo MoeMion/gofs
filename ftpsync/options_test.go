@@ -1,6 +1,8 @@
 package ftpsync_test
 
 import (
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,5 +87,79 @@ func TestOptionsZeroValueCompiles(t *testing.T) {
 	var opts ftpsync.Options
 	if opts.Direction != "" {
 		t.Errorf("expect zero-value direction to remain unset")
+	}
+}
+
+func TestNewFTPSyncServiceConstructsFromTypedOptions(t *testing.T) {
+	opts := completeLocalToFTPOptions()
+	svc, err := ftpsync.NewFTPSyncService(opts)
+	if err != nil {
+		t.Fatalf("expect service construction to succeed, got %v", err)
+	}
+	if svc == nil {
+		t.Fatalf("expect service instance")
+	}
+}
+
+func TestNewFTPSyncServiceDoesNotLeakPasswordInErrors(t *testing.T) {
+	const secret = "do-not-leak-this-secret"
+	opts := completeLocalToFTPOptions()
+	opts.Direction = "unsupported"
+	opts.Destination.FTP.Password = secret
+
+	_, err := ftpsync.NewFTPSyncService(opts)
+	if err == nil {
+		t.Fatalf("expect invalid direction to fail")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("constructor error leaked FTP password")
+	}
+}
+
+func TestPackageDependencyBoundary(t *testing.T) {
+	cmd := exec.Command("go", "list", "-deps", ".")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list dependency check failed: %v", err)
+	}
+
+	forbidden := []string{
+		"github.com/no-src/gofs/cmd",
+		"github.com/no-src/gofs/conf",
+		"github.com/no-src/gofs/flag",
+		"github.com/no-src/gofs/server",
+		"github.com/no-src/gofs/daemon",
+		"github.com/no-src/gofs/api",
+		"github.com/no-src/gofs/monitor",
+		"github.com/no-src/gofs/report",
+		"github.com/no-src/gofs/driver/sftp",
+		"github.com/no-src/gofs/driver/minio",
+	}
+	deps := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for _, dep := range deps {
+		for _, forbiddenDep := range forbidden {
+			if dep == forbiddenDep || strings.HasPrefix(dep, forbiddenDep+"/") {
+				t.Fatalf("ftpsync imports forbidden dependency %s", dep)
+			}
+		}
+	}
+}
+
+func completeLocalToFTPOptions() ftpsync.Options {
+	return ftpsync.Options{
+		Direction: ftpsync.DirectionLocalToFTP,
+		Source:    ftpsync.Endpoint{LocalPath: "/data/source"},
+		Destination: ftpsync.Endpoint{
+			FTP: ftpsync.FTPOptions{
+				Host:         "ftp.example.test",
+				Port:         21,
+				Username:     "ftp-user",
+				Password:     "secret-password",
+				RemotePath:   "/incoming",
+				PassiveMode:  true,
+				Timeout:      15 * time.Second,
+				PathEncoding: "utf-8",
+			},
+		},
 	}
 }

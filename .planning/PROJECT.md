@@ -24,10 +24,10 @@ Provide a focused Go package for reliable FTP file synchronization without requi
 - ✓ FTP usage is discoverable in CLI/configuration documentation — v1.0
 - ✓ FTP sync can be invoked through a Go `FTPSyncService` instead of the CLI — Phase 5
 - ✓ `FTPSyncService` accepts typed Go options for endpoint, retry, ignore, and hook configuration — Phase 5
+- ✓ Library consumers can run one-shot FTP sync flows with compact `Result + error` semantics — Phase 6
 
 ### Active
 
-- [ ] Library consumers can run one-shot FTP sync flows
 - [ ] Library consumers can run background persistent disk→FTP monitoring/sync flows
 - [ ] Non-FTP protocols and non-library runtime surfaces are removed or isolated from the package API
 
@@ -68,6 +68,8 @@ Provide a focused Go package for reliable FTP file synchronization without requi
 | Aggressively remove non-FTP runtime surfaces in v2.0 | Reduces package size and API complexity for the library use case | Pending |
 | Use typed Go options only in the public API | Keeps library consumers off legacy CLI/YAML parser semantics and makes validation explicit | Established in Phase 5 |
 | Restrict background sync in v2.0 to disk→FTP only | Matches the approved scope and keeps FTP→disk polling out of the public lifecycle API | Established in Phase 5 |
+| Keep one-shot sync results compact and summary-oriented | Avoids inflating the public API with per-file report structures while still giving callers actionable execution feedback | Established in Phase 6 |
+| One-shot sync should be best-effort and return `Result + error` on partial failure | Preserves visibility into completed work and later-path continuation for callers | Established in Phase 6 |
 
 ## Current Milestone: v2.0 FTP Sync Library
 
@@ -98,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 after Phase 5 completion*
+*Last updated: 2026-04-27 after Phase 6 completion*

@@ -155,6 +155,40 @@ func TestStartBackgroundRejectsFTPToLocal(t *testing.T) {
 	}
 }
 
+func TestStartBackgroundDirectionPolicyRemainsLocalToFTPOnly(t *testing.T) {
+	testCases := []struct {
+		name      string
+		options   ftpsync.Options
+		supported bool
+	}{
+		{name: "local to ftp", options: completeLocalToFTPOptions(), supported: true},
+		{name: "ftp to local", options: completeFTPToLocalOptions(), supported: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, err := ftpsync.NewFTPSyncService(tc.options)
+			if err != nil {
+				t.Fatalf("construct service: %v", err)
+			}
+			handle, err := svc.StartBackground(context.Background())
+			if tc.supported {
+				if err != nil {
+					t.Fatalf("expect local to FTP background to be supported, got %v", err)
+				}
+				if handle == nil {
+					t.Fatalf("expect supported background start to return a handle")
+				}
+				_ = handle.Stop(context.Background())
+				return
+			}
+			if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
+				t.Fatalf("expect unsupported capability for background direction, got %v", err)
+			}
+		})
+	}
+}
+
 func TestContextAwarePublicContractsCompile(t *testing.T) {
 	var result ftpsync.Result
 	var handle ftpsync.Handle

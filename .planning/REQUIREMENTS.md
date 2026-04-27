@@ -14,7 +14,7 @@ Requirements for converting the existing FTP synchronization capability into a f
 - [x] **API-02**: Developer can configure `FTPSyncService` through typed Go options covering local path, FTP host, port, username, password, remote path, passive mode, timeout, path encoding, retry behavior, and ignore rules
 - [x] **API-03**: `FTPSyncService` validates supported directions explicitly and rejects unsupported local↔local, FTP↔FTP, non-FTP, missing-path, and ambiguous endpoint combinations
 - [x] **API-04**: Public sync methods accept `context.Context` and return structured errors for validation, cancellation, connection/authentication, transfer, and unsupported-capability failures
-- [ ] **API-05**: Public API exposes optional no-op-by-default hooks for logging, progress, and sync event reporting without requiring global loggers or web reports
+- [x] **API-05**: Public API exposes optional no-op-by-default hooks for logging, progress, and sync event reporting without requiring global loggers or web reports
 
 ### One-Shot Sync
 
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Complete |
 | API-04 | Phase 5 | Complete |
-| API-05 | Phase 5 | Pending |
+| API-05 | Phase 5 | Complete |
 | ONCE-01 | Phase 6 | Pending |
 | ONCE-02 | Phase 6 | Pending |
 | ONCE-03 | Phase 6 | Pending |

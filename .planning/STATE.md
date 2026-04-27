@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-04-27T03:51:58.668Z"
+status: verifying
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-04-27T03:56:51.338Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 Phase: 05 (public-ftpsyncservice-api-contract) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-27
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 05 P01 | 3min | 2 tasks | 5 files |
 | Phase 05 P02 | 3min | 3 tasks | 4 files |
+| Phase 05 P03 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Represented public FTPSyncService failures with string-backed ErrorKind constants and structured errors compatible with errors.As/errors.Is.
 - [Phase 05]: Required positive FTP ports during public API validation so invalid-port failures are surfaced before transfer work.
 - [Phase 05]: Kept SyncOnce and StartBackground as context-aware contracts returning unsupported capability until Phase 06/07 provide implementations.
+- [Phase 05]: Added HookSet to public Options for cohesive optional logging, progress, and event callbacks.
+- [Phase 05]: Kept hook execution synchronous and library-local with no legacy logger/report/eventlog/web dependencies.
+- [Phase 05]: Normalized omitted hooks to no-op callbacks and made service dispatch helpers zero-value safe.
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T03:51:58.648Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-04-27T03:56:51.319Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None

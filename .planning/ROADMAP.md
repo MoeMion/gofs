@@ -100,7 +100,12 @@ Plans:
   2. FTP driver, path encoding, retry, ignore/filtering, rate limiting, and core disk/FTP sync internals remain usable behind `FTPSyncService`.
   3. Public `ftpsync` APIs do not expose old `conf.Config`, `core.VFS`, CLI URL parsing, or server/task types.
   4. `go.mod` no longer retains unnecessary Gin, gRPC, SFTP, MinIO, Redis/cache, QUIC, OAuth, or protobuf dependencies for the library build.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 08-01-PLAN.md — Add dependency and public API guards for FTP-only package reduction.
+- [ ] 08-02-PLAN.md — Replace the legacy one-shot adapter with a package-local FTP core.
+- [ ] 08-03-PLAN.md — Delete old CLI/server/protocol runtime packages and release surfaces.
+- [ ] 08-04-PLAN.md — Tidy module dependencies and prove the final FTP-only build graph.
 
 ### Phase 9: Verification, Examples, and Migration Docs
 **Goal**: Developers can trust and adopt the new FTP sync library because automated tests, real FTP integration coverage, examples, and migration notes match the final v2.0 package contract.

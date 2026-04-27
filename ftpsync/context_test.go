@@ -3,6 +3,7 @@ package ftpsync_test
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -72,6 +73,18 @@ func TestSyncOnceChecksValidationAndContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
+	tempDir := t.TempDir()
+	if err := os.WriteFile(tempDir+"/alpha.txt", []byte("alpha"), 0o644); err != nil {
+		t.Fatalf("write source file: %v", err)
+	}
+	svc, err = ftpsync.NewFTPSyncService(func() ftpsync.Options {
+		opts := completeLocalToFTPOptions()
+		opts.Source.LocalPath = tempDir
+		return opts
+	}())
+	if err != nil {
+		t.Fatalf("construct service with temp source: %v", err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, err = svc.SyncOnce(ctx)
@@ -83,11 +96,17 @@ func TestSyncOnceChecksValidationAndContext(t *testing.T) {
 	}
 
 	result, err := svc.SyncOnce(context.Background())
-	if err != nil {
-		t.Fatalf("expect SyncOnce scaffolding to succeed after validation, got %v", err)
+	if err == nil {
+		t.Fatalf("expect SyncOnce to dispatch into real execution without a test FTP server")
+	}
+	if !ftpsync.IsKind(err, ftpsync.ErrTransfer) && !ftpsync.IsKind(err, ftpsync.ErrConnection) && !ftpsync.IsKind(err, ftpsync.ErrAuthentication) {
+		t.Fatalf("expect execution error kind after validation/context pass, got %v", err)
 	}
 	if result.Direction != ftpsync.DirectionLocalToFTP {
 		t.Fatalf("expect one-shot result direction, got %#v", result)
+	}
+	if result.StartedAt.IsZero() || result.CompletedAt.IsZero() {
+		t.Fatalf("expect result timestamps even on execution failure, got %#v", result)
 	}
 }
 

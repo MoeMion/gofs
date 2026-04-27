@@ -2,8 +2,11 @@ package ftpsync
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -96,6 +99,10 @@ func (a syncOnceAdapter) newSync() (legacysync.Sync, error) {
 }
 
 func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	if result.Direction == DirectionLocalToFTP {
+		return runSyncOnceLocalToFTP(ctx, svc, adapter, result)
+	}
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -112,6 +119,97 @@ func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncO
 	}
 	svc.reportProgress(Progress{Path: result.SourceRoot, FilesTransferred: int64(result.FilesAttempted), FilesTotal: int64(result.FilesAttempted)})
 	_ = adapter
+	return nil
+}
+
+func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	syncer, err := adapter.newSync()
+	if err != nil {
+		return err
+	}
+	defer syncer.Close()
+
+	sourceRoot, err := filepath.Abs(svc.opts.Source.LocalPath)
+	if err != nil {
+		return err
+	}
+
+	var failureErrs []error
+	err = filepath.WalkDir(sourceRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			failureErrs = append(failureErrs, walkErr)
+			result.FailureCount++
+			result.Partial = true
+			svc.reportEvent(SyncEvent{Operation: "walk", Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if adapter.option.PathIgnore != nil && adapter.option.PathIgnore.MatchPath(currentPath, "ftp push client sync", "sync once") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		result.PathsVisited++
+		opName := "create"
+		var opErr error
+
+		isSymlink := false
+		if fileType := d.Type(); fileType&os.ModeSymlink != 0 {
+			isSymlink = true
+		}
+
+		switch {
+		case d.IsDir():
+			result.DirectoriesAttempted++
+			opErr = syncer.Create(currentPath)
+		case isSymlink:
+			result.FilesAttempted++
+			opName = "symlink"
+			target, readErr := os.Readlink(currentPath)
+			if readErr != nil {
+				opErr = readErr
+			} else {
+				opErr = syncer.Symlink(target, currentPath)
+			}
+		default:
+			result.FilesAttempted++
+			if opErr = syncer.Create(currentPath); opErr == nil {
+				opName = "write"
+				opErr = syncer.Write(currentPath)
+			}
+		}
+
+		if opErr != nil {
+			result.FailureCount++
+			result.Partial = true
+			failureErrs = append(failureErrs, fmt.Errorf("%s %s: %w", opName, currentPath, opErr))
+			svc.log(fmt.Sprintf("SyncOnce %s failed: %s", opName, currentPath))
+			svc.reportEvent(SyncEvent{Operation: opName, Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
+			return nil
+		}
+
+		svc.reportEvent(SyncEvent{Operation: opName, Path: currentPath, Status: "complete"})
+		svc.reportProgress(Progress{
+			Path:             currentPath,
+			FilesTransferred: int64(result.FilesAttempted - result.FailureCount),
+			FilesTotal:       int64(result.FilesAttempted),
+		})
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(failureErrs) > 0 {
+		return errors.Join(failureErrs...)
+	}
 	return nil
 }
 

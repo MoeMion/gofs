@@ -16,7 +16,7 @@ func TestBackgroundHandleWait(t *testing.T) {
 		return nil
 	}
 
-	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackground())
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(t.TempDir()))
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestStartBackgroundInitialSyncBeforeReady(t *testing.T) {
 		return errors.New("initial catch-up failed")
 	}
 
-	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackground())
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(t.TempDir()))
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}

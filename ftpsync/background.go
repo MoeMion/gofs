@@ -64,13 +64,17 @@ func (h *backgroundHandle) Stop(ctx context.Context) error {
 
 func (h *backgroundHandle) run(ctx context.Context, svc *FTPSyncService) {
 	defer close(h.done)
-	if _, err := executeSyncOnce(ctx, svc); err != nil {
-		h.setCurrent(err)
-	}
+	h.runInitialSync(ctx, svc)
 	close(h.ready)
 	<-ctx.Done()
 	if err := ctx.Err(); err != nil && err != context.Canceled {
 		h.setFinal(newError(ErrCanceled, "StartBackground context canceled", err))
+	}
+}
+
+func (h *backgroundHandle) runInitialSync(ctx context.Context, svc *FTPSyncService) {
+	if _, err := executeSyncOnce(ctx, svc); err != nil {
+		h.setCurrent(err)
 	}
 }
 

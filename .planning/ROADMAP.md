@@ -54,7 +54,7 @@ See archived milestone artifacts:
 **Plans:** 3 plans
 Plans:
 - [x] 05-01-PLAN.md — Create the public ftpsync typed option surface and FTPSyncService constructor without legacy runtime imports.
-- [ ] 05-02-PLAN.md — Add explicit validation plus context-aware public method and structured error contracts.
+- [x] 05-02-PLAN.md — Add explicit validation plus context-aware public method and structured error contracts.
 - [ ] 05-03-PLAN.md — Add optional no-op logging, progress, and sync event hooks isolated from global runtime reporting.
 
 ### Phase 6: One-Shot Disk↔FTP Sync Through Library API

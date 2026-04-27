@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
-status: ready_to_plan
-stopped_at: Roadmap created for v2.0 FTP Sync Library
-last_updated: "2026-04-27T00:00:00.000Z"
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-27T03:46:42.806Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Provide a focused Go package for reliable FTP file synchronization without requiring the existing CLI/server runtime.
-**Current focus:** Phase 5 — Public FTPSyncService API Contract
+**Current focus:** Phase 05 — public-ftpsyncservice-api-contract
 
 ## Current Position
 
-Phase: 5 of 9 (Public FTPSyncService API Contract)
-Plan: TBD in current phase
-Status: Ready to plan
-Last activity: 2026-04-27 — Created v2.0 roadmap and mapped all requirements
+Phase: 05 (public-ftpsyncservice-api-contract) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-27
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0 in current milestone
 - Average duration: -
 - Total execution time: -
@@ -50,10 +51,12 @@ Progress: [░░░░░░░░░░] 0%
 | 9. Verification, Examples, and Migration Docs | TBD | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: none in current milestone
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 05 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -67,6 +70,9 @@ Recent decisions affecting current work:
 - Public configuration uses typed Go options only; no YAML or CLI parser belongs in the public API.
 - Background persistent sync is supported only for disk→FTP, not FTP→disk polling or bidirectional conflict resolution.
 - Non-FTP runtime surfaces should be removed or isolated from the library API.
+- [Phase 05]: Represented sync direction as string-backed Direction constants for local→FTP and FTP→local only.
+- [Phase 05]: Kept FTPSyncService state private and copied ignore-rule slices so callers cannot mutate service-local slice storage after construction.
+- [Phase 05]: Constructor errors use a generic sentinel message to avoid leaking FTP passwords or other sensitive option values.
 
 ### Pending Todos
 
@@ -88,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27
-Stopped at: Roadmap created for v2.0 FTP Sync Library; next step is `/gsd-plan-phase 5`
+Last session: 2026-04-27T03:46:42.787Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

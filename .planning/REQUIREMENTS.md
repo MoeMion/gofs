@@ -10,8 +10,8 @@ Requirements for converting the existing FTP synchronization capability into a f
 
 ### Public Library API
 
-- [ ] **API-01**: Developer can import a `ftpsync` package and construct an `FTPSyncService` without invoking CLI, process, server, or daemon code
-- [ ] **API-02**: Developer can configure `FTPSyncService` through typed Go options covering local path, FTP host, port, username, password, remote path, passive mode, timeout, path encoding, retry behavior, and ignore rules
+- [x] **API-01**: Developer can import a `ftpsync` package and construct an `FTPSyncService` without invoking CLI, process, server, or daemon code
+- [x] **API-02**: Developer can configure `FTPSyncService` through typed Go options covering local path, FTP host, port, username, password, remote path, passive mode, timeout, path encoding, retry behavior, and ignore rules
 - [ ] **API-03**: `FTPSyncService` validates supported directions explicitly and rejects unsupported local↔local, FTP↔FTP, non-FTP, missing-path, and ambiguous endpoint combinations
 - [ ] **API-04**: Public sync methods accept `context.Context` and return structured errors for validation, cancellation, connection/authentication, transfer, and unsupported-capability failures
 - [ ] **API-05**: Public API exposes optional no-op-by-default hooks for logging, progress, and sync event reporting without requiring global loggers or web reports
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | Phase 5 | Pending |
-| API-02 | Phase 5 | Pending |
+| API-01 | Phase 5 | Complete |
+| API-02 | Phase 5 | Complete |
 | API-03 | Phase 5 | Pending |
 | API-04 | Phase 5 | Pending |
 | API-05 | Phase 5 | Pending |

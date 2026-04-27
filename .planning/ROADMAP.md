@@ -53,7 +53,7 @@ See archived milestone artifacts:
   5. Developer can attach optional logging, progress, and sync event hooks, while the default service remains no-op and library-local.
 **Plans:** 3 plans
 Plans:
-- [ ] 05-01-PLAN.md — Create the public ftpsync typed option surface and FTPSyncService constructor without legacy runtime imports.
+- [x] 05-01-PLAN.md — Create the public ftpsync typed option surface and FTPSyncService constructor without legacy runtime imports.
 - [ ] 05-02-PLAN.md — Add explicit validation plus context-aware public method and structured error contracts.
 - [ ] 05-03-PLAN.md — Add optional no-op logging, progress, and sync event hooks isolated from global runtime reporting.
 

@@ -131,10 +131,14 @@ func TestStartBackgroundChecksValidationAndContext(t *testing.T) {
 		t.Fatalf("expect typed cancellation error, got %v", err)
 	}
 
-	_, err = svc.StartBackground(context.Background())
-	if err == nil || !ftpsync.IsKind(err, ftpsync.ErrUnsupportedCapability) {
-		t.Fatalf("expect unsupported background capability until implementation phase, got %v", err)
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("expect local to FTP background dispatch after validation/context checks, got %v", err)
 	}
+	if handle == nil {
+		t.Fatalf("expect non-nil local to FTP background handle")
+	}
+	_ = handle.Stop(context.Background())
 }
 
 func TestStartBackgroundRejectsFTPToLocal(t *testing.T) {

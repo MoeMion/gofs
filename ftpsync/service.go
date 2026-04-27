@@ -32,6 +32,7 @@ type Result struct {
 type Handle interface {
 	Done() <-chan struct{}
 	Err() error
+	Wait() error
 	Stop(context.Context) error
 }
 
@@ -73,7 +74,10 @@ func (s *FTPSyncService) StartBackground(ctx context.Context) (Handle, error) {
 	if err := validateContext(ctx, "StartBackground"); err != nil {
 		return nil, err
 	}
-	return nil, unsupportedMethod("StartBackground", s.opts.Direction)
+	if s.opts.Direction != DirectionLocalToFTP {
+		return nil, unsupportedMethod("StartBackground", s.opts.Direction)
+	}
+	return executeStartBackground(ctx, s)
 }
 
 func validateOptions(opts Options) error {

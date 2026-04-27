@@ -103,7 +103,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] 08-01-PLAN.md — Add dependency and public API guards for FTP-only package reduction.
-- [ ] 08-02-PLAN.md — Replace the legacy one-shot adapter with a package-local FTP core.
+- [x] 08-02-PLAN.md — Replace the legacy one-shot adapter with a package-local FTP core.
 - [ ] 08-03-PLAN.md — Delete old CLI/server/protocol runtime packages and release surfaces.
 - [ ] 08-04-PLAN.md — Tidy module dependencies and prove the final FTP-only build graph.
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-04-27T10:06:47.330Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-27T10:42:23.878Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 ## Current Position
 
 Phase: 08 (ftp-only-package-reduction) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-27
 
@@ -69,6 +69,7 @@ Progress: [████░░░░░░] 40%
 | Phase 07-background-disk-ftp-lifecycle P02 | 5min | 2 tasks | 2 files |
 | Phase 07-background-disk-ftp-lifecycle P03 | 4min | 2 tasks | 3 files |
 | Phase 08-ftp-only-package-reduction P01 | 8min | 2 tasks | 2 files |
+| Phase 08-ftp-only-package-reduction P02 | 32min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 07-background-disk-ftp-lifecycle]: Handle.Err remains the latest runtime health signal while Handle.Wait returns only the terminal lifecycle result after Done closes.
 - [Phase 07-background-disk-ftp-lifecycle]: Background sync policy remains local-to-FTP only; FTP-to-local background attempts continue to return ErrUnsupportedCapability.
 - [Phase 08]: Added executable Phase 8 package reduction guards before extraction: dependency blacklist currently fails on legacy runtime imports, while public API reflection guard passes typed-options-only contracts.
+- [Phase 08]: Replaced SyncOnce legacy VFS/sync adapter with a package-local FTP client seam so ftpsync no longer imports core, sync, logger, retry, or ignore.
+- [Phase 08]: Kept retry and ignore behavior inside ftpsync using typed options, preserving public API shape while shrinking the default package graph.
 
 ### Pending Todos
 
@@ -129,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T10:04:59.857Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-04-27T10:42:23.858Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

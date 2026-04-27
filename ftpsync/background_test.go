@@ -13,7 +13,7 @@ import (
 
 func TestBackgroundHandleWait(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func TestBackgroundHandleWait(t *testing.T) {
 func TestStartBackgroundInitialSyncBeforeReady(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	initialSyncDone := make(chan struct{})
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		close(initialSyncDone)
 		return errors.New("initial catch-up failed")
 	}
@@ -85,7 +85,7 @@ func TestStartBackgroundInitialSyncBeforeReady(t *testing.T) {
 func TestBackgroundDebouncesBurstEvents(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	var syncPasses int32
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		atomic.AddInt32(&syncPasses, 1)
 		return nil
 	}
@@ -118,7 +118,7 @@ func TestBackgroundDebouncesBurstEvents(t *testing.T) {
 func TestBackgroundWatchesNewDirectories(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	var syncPasses int32
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		atomic.AddInt32(&syncPasses, 1)
 		return nil
 	}
@@ -150,7 +150,7 @@ func TestBackgroundWatchesNewDirectories(t *testing.T) {
 func TestBackgroundSyncFailureIsObservableAndNonTerminal(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	var syncPasses int32
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		pass := atomic.AddInt32(&syncPasses, 1)
 		if pass == 2 {
 			return newError(ErrTransfer, "simulated steady-state failure", errors.New("upload failed"))
@@ -200,7 +200,7 @@ func TestBackgroundRunsFollowUpSyncForEventsDuringActiveSync(t *testing.T) {
 	var syncPasses int32
 	secondStarted := make(chan struct{})
 	releaseSecond := make(chan struct{})
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		pass := atomic.AddInt32(&syncPasses, 1)
 		if pass == 2 {
 			close(secondStarted)
@@ -243,7 +243,7 @@ func TestBackgroundStopShutsDownDeterministically(t *testing.T) {
 	var syncPasses int32
 	secondStarted := make(chan struct{})
 	releaseSecond := make(chan struct{})
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		pass := atomic.AddInt32(&syncPasses, 1)
 		if pass == 2 {
 			close(secondStarted)
@@ -302,7 +302,7 @@ func TestBackgroundStopShutsDownDeterministically(t *testing.T) {
 
 func TestBackgroundContextCancelStopsRunner(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		return nil
 	}
 
@@ -324,7 +324,7 @@ func TestBackgroundContextCancelStopsRunner(t *testing.T) {
 
 func TestBackgroundStopAndCancelRaceIdempotent(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		return nil
 	}
 
@@ -361,7 +361,7 @@ func TestBackgroundStopAndCancelRaceIdempotent(t *testing.T) {
 func TestBackgroundWaitReturnsFinalError(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
 	var syncPasses int32
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		pass := atomic.AddInt32(&syncPasses, 1)
 		if pass == 2 {
 			return newError(ErrTransfer, "simulated steady-state failure", errors.New("upload failed"))

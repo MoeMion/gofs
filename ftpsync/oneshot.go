@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,26 +12,24 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/no-src/gofs/core"
-	"github.com/no-src/gofs/ignore"
-	"github.com/no-src/gofs/logger"
-	"github.com/no-src/gofs/retry"
-	legacysync "github.com/no-src/gofs/sync"
-	"github.com/no-src/nsgo/hashutil"
 )
 
-const syncOnceDefaultChunkSize int64 = 1
+type syncOnceExecutor func(ctx context.Context, svc *FTPSyncService, result *Result) error
 
-type syncBuilder func(opt legacysync.Option) (legacysync.Sync, error)
+type ftpClientFactory func(ctx context.Context, opts FTPOptions) (ftpCore, error)
 
-type syncOnceExecutor func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error
-
-type syncOnceAdapter struct {
-	option legacysync.Option
+type ftpCore interface {
+	mkdirAll(remotePath string) error
+	writeFile(remotePath string, localPath string) error
+	remove(remotePath string) error
+	walk(root string, fn fs.WalkDirFunc) error
+	readFile(remotePath string, localPath string) error
+	close() error
 }
 
-var buildLegacySync syncBuilder = legacysync.NewSync
+var openFTPClient ftpClientFactory = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+	return newFTPClient(ctx, opts)
+}
 
 var runSyncOnce syncOnceExecutor = runSyncOnceScaffold
 
@@ -41,17 +38,7 @@ func executeSyncOnce(ctx context.Context, svc *FTPSyncService) (Result, error) {
 	svc.log(fmt.Sprintf("SyncOnce start: %s", result.Direction))
 	svc.reportEvent(SyncEvent{Operation: "sync_once", Path: result.SourceRoot, Status: "started"})
 
-	adapter, err := newSyncOnceAdapter(svc.opts)
-	if err != nil {
-		result.CompletedAt = time.Now().UTC()
-		result.FailureCount = 1
-		result.Partial = true
-		typedErr := newTransferError("SyncOnce adapter construction failed", err)
-		svc.reportEvent(SyncEvent{Operation: "sync_once", Path: result.SourceRoot, Status: "failed", ErrorKind: typedErr.Kind()})
-		return result, typedErr
-	}
-
-	err = runSyncOnce(ctx, svc, adapter, &result)
+	err := runSyncOnce(ctx, svc, &result)
 	result.CompletedAt = time.Now().UTC()
 	result.Partial = result.FailureCount > 0
 	if err != nil {
@@ -76,35 +63,12 @@ func newSyncOnceResult(opts Options) Result {
 	}
 }
 
-func newSyncOnceAdapter(opts Options) (syncOnceAdapter, error) {
-	pathIgnore, err := newSyncOnceIgnore(opts.IgnoreRules)
-	if err != nil {
-		return syncOnceAdapter{}, err
-	}
-
-	opt := legacysync.Option{
-		Source:            buildSourceVFS(opts),
-		Dest:              buildDestinationVFS(opts),
-		ChunkSize:         syncOnceDefaultChunkSize,
-		ChecksumAlgorithm: hashutil.DefaultHash,
-		Retry:             retry.New(opts.Retry.Count, opts.Retry.Wait, opts.Retry.Async, logger.NewEmptyLogger()),
-		PathIgnore:        pathIgnore,
-		Logger:            logger.NewEmptyLogger(),
-		SyncOnce:          true,
-	}
-	return syncOnceAdapter{option: opt}, nil
-}
-
-func (a syncOnceAdapter) newSync() (legacysync.Sync, error) {
-	return buildLegacySync(a.option)
-}
-
-func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, result *Result) error {
 	if result.Direction == DirectionLocalToFTP {
-		return runSyncOnceLocalToFTP(ctx, svc, adapter, result)
+		return runSyncOnceLocalToFTP(ctx, svc, result)
 	}
 	if result.Direction == DirectionFTPToLocal {
-		return runSyncOnceFTPToLocal(ctx, svc, adapter, result)
+		return runSyncOnceFTPToLocal(ctx, svc, result)
 	}
 
 	select {
@@ -122,11 +86,10 @@ func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncO
 		result.FilesAttempted = 1
 	}
 	svc.reportProgress(Progress{Path: result.SourceRoot, FilesTransferred: int64(result.FilesAttempted), FilesTotal: int64(result.FilesAttempted)})
-	_ = adapter
 	return nil
 }
 
-func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, result *Result) error {
 	destinationRoot, err := filepath.Abs(svc.opts.Destination.LocalPath)
 	if err != nil {
 		return err
@@ -138,24 +101,24 @@ func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syn
 		return err
 	}
 
-	syncer, err := adapter.newSync()
+	client, err := openFTPClient(ctx, svc.opts.Source.FTP)
 	if err != nil {
 		return err
 	}
-	defer syncer.Close()
+	defer client.close()
 
-	remoteRoot := adapter.option.Source.RemotePath().Base()
+	remoteRoot := cleanFTPPath(svc.opts.Source.FTP.RemotePath)
 	if err := ensureTargetUnderRoot(destinationRoot, remoteRoot, remoteRoot); err != nil {
 		return err
 	}
 
-	var failureErrs []error
-	sourceWalker, ok := syncer.(legacysync.SourceWalker)
-	if !ok {
-		return newTransferError("SyncOnce FTP→local source walker unavailable", errInvalidOptions)
+	pathIgnore, err := newSyncOnceIgnore(svc.opts.IgnoreRules)
+	if err != nil {
+		return err
 	}
 
-	err = sourceWalker.WalkSourceDir(remoteRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
+	var failureErrs []error
+	err = client.walk(remoteRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			failureErrs = append(failureErrs, walkErr)
 			return nil
@@ -167,19 +130,15 @@ func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syn
 		default:
 		}
 
-		if adapter.option.PathIgnore != nil && adapter.option.PathIgnore.MatchPath(currentPath, "ftp pull client sync", "sync once") {
+		if pathIgnore != nil && pathIgnore.MatchPath(currentPath, "ftp pull client sync", "sync once") {
 			return nil
 		}
 
-		if currentPath == remoteRoot {
-			result.PathsVisited++
-			result.DirectoriesAttempted++
-			if createErr := syncer.Create(currentPath); createErr != nil {
-				result.FailureCount++
-				result.Partial = true
-				failureErrs = append(failureErrs, fmt.Errorf("create %s: %w", currentPath, createErr))
-				svc.reportEvent(SyncEvent{Operation: "create", Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
-			}
+		if err := ensureTargetUnderRoot(destinationRoot, remoteRoot, currentPath); err != nil {
+			result.FailureCount++
+			result.Partial = true
+			failureErrs = append(failureErrs, err)
+			svc.reportEvent(SyncEvent{Operation: "write", Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
 			return nil
 		}
 
@@ -187,25 +146,19 @@ func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syn
 		opName := "create"
 		var opErr error
 		isSymlink := d.Type()&os.ModeSymlink != 0
+		target := localTargetPath(destinationRoot, remoteRoot, currentPath)
 
 		if d.IsDir() {
 			result.DirectoriesAttempted++
-			opErr = syncer.Create(currentPath)
+			opErr = os.MkdirAll(target, 0o755)
 		} else if isSymlink {
 			result.FilesAttempted++
 			opName = "symlink"
-			target, readErr := sourceWalker.ReadSourceLink(currentPath)
-			if readErr != nil {
-				opErr = readErr
-			} else {
-				opErr = syncer.Symlink(target, currentPath)
-			}
+			opErr = newTransferError("SyncOnce FTP symlink pull is unsupported", errInvalidOptions)
 		} else {
 			result.FilesAttempted++
-			if opErr = syncer.Create(currentPath); opErr == nil {
-				opName = "write"
-				opErr = syncer.Write(currentPath)
-			}
+			opName = "write"
+			opErr = client.readFile(currentPath, target)
 		}
 
 		if opErr != nil {
@@ -232,21 +185,25 @@ func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syn
 	}
 
 	if len(failureErrs) > 0 {
-		result.FailureCount += len(failureErrs)
 		result.Partial = true
 		return errors.Join(failureErrs...)
 	}
 	return nil
 }
 
-func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
-	syncer, err := adapter.newSync()
+func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, result *Result) error {
+	client, err := openFTPClient(ctx, svc.opts.Destination.FTP)
 	if err != nil {
 		return err
 	}
-	defer syncer.Close()
+	defer client.close()
 
 	sourceRoot, err := filepath.Abs(svc.opts.Source.LocalPath)
+	if err != nil {
+		return err
+	}
+	remoteRoot := cleanFTPPath(svc.opts.Destination.FTP.RemotePath)
+	pathIgnore, err := newSyncOnceIgnore(svc.opts.IgnoreRules)
 	if err != nil {
 		return err
 	}
@@ -267,44 +224,48 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syn
 		default:
 		}
 
-		if adapter.option.PathIgnore != nil && adapter.option.PathIgnore.MatchPath(currentPath, "ftp push client sync", "sync once") {
+		relPath, err := filepath.Rel(sourceRoot, currentPath)
+		if err != nil {
+			failureErrs = append(failureErrs, err)
+			return nil
+		}
+		if relPath == "." {
+			relPath = ""
+		}
+		normalizedRel := normalizeIgnorePath(relPath)
+		if pathIgnore != nil && pathIgnore.MatchPath(normalizedRel, "ftp push client sync", "sync once") {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 
+		remotePath := joinFTPPath(remoteRoot, filepath.ToSlash(relPath))
+		if relPath == "" {
+			remotePath = remoteRoot
+		}
 		result.PathsVisited++
 		opName := "create"
 		var opErr error
 		var bytesTotal int64
 
-		isSymlink := false
-		if fileType := d.Type(); fileType&os.ModeSymlink != 0 {
-			isSymlink = true
-		}
-
+		isSymlink := d.Type()&os.ModeSymlink != 0
 		switch {
 		case d.IsDir():
 			result.DirectoriesAttempted++
-			opErr = syncer.Create(currentPath)
+			opErr = retryWithContext(ctx, svc.opts.Retry, "ftp mkdir", func() error { return client.mkdirAll(remotePath) })
 		case isSymlink:
 			result.FilesAttempted++
 			opName = "symlink"
-			target, readErr := os.Readlink(currentPath)
-			if readErr != nil {
-				opErr = readErr
-			} else {
-				opErr = syncer.Symlink(target, currentPath)
-			}
+			opErr = newTransferError("SyncOnce FTP symlink push is unsupported", errInvalidOptions)
 		default:
 			result.FilesAttempted++
 			if info, infoErr := d.Info(); infoErr == nil {
 				bytesTotal = info.Size()
 			}
-			if opErr = syncer.Create(currentPath); opErr == nil {
+			if opErr = retryWithContext(ctx, svc.opts.Retry, "ftp mkdir", func() error { return client.mkdirAll(path.Dir(remotePath)) }); opErr == nil {
 				opName = "write"
-				opErr = syncer.Write(currentPath)
+				opErr = retryWithContext(ctx, svc.opts.Retry, "ftp write", func() error { return client.writeFile(remotePath, currentPath) })
 			}
 		}
 
@@ -346,40 +307,6 @@ func classifySyncOnceError(result Result, err error) *Error {
 	return newTransferError("SyncOnce transfer failed", err)
 }
 
-func buildSourceVFS(opts Options) core.VFS {
-	if opts.Direction == DirectionLocalToFTP {
-		return core.NewDiskVFS(opts.Source.LocalPath)
-	}
-	return buildFTPVFS(opts.Source.FTP)
-}
-
-func buildDestinationVFS(opts Options) core.VFS {
-	if opts.Direction == DirectionLocalToFTP {
-		return buildFTPVFS(opts.Destination.FTP)
-	}
-	return core.NewDiskVFS(opts.Destination.LocalPath)
-}
-
-func buildFTPVFS(opts FTPOptions) core.VFS {
-	query := url.Values{}
-	query.Set("remote_path", opts.RemotePath)
-	query.Set("ftp_user", opts.Username)
-	query.Set("ftp_pass", opts.Password)
-	query.Set("ftp_passive", fmt.Sprintf("%t", opts.PassiveMode))
-	if opts.Timeout > 0 {
-		query.Set("ftp_timeout", opts.Timeout.String())
-	}
-	if strings.TrimSpace(opts.PathEncoding) != "" {
-		query.Set("ftp_encoding", opts.PathEncoding)
-	}
-	ftpURL := url.URL{
-		Scheme:   "ftp",
-		Host:     fmt.Sprintf("%s:%d", opts.Host, opts.Port),
-		RawQuery: query.Encode(),
-	}
-	return core.NewVFS(ftpURL.String())
-}
-
 func endpointRoot(endpoint Endpoint) string {
 	if endpoint.LocalPath != "" {
 		return endpoint.LocalPath
@@ -397,7 +324,7 @@ type compiledIgnoreRule struct {
 	regexp  *regexp.Regexp
 }
 
-func newSyncOnceIgnore(rules []IgnoreRule) (ignore.PathIgnore, error) {
+func newSyncOnceIgnore(rules []IgnoreRule) (*syncOnceIgnore, error) {
 	compiled := make([]compiledIgnoreRule, 0, len(rules))
 	for _, rule := range rules {
 		compiledRule := compiledIgnoreRule{kind: rule.Kind, pattern: normalizeIgnorePath(rule.Pattern)}
@@ -451,11 +378,7 @@ func normalizeIgnorePath(value string) string {
 
 func ensureTargetUnderRoot(root string, remoteRoot string, remotePath string) error {
 	cleanRoot := filepath.Clean(root)
-	cleanRemoteRoot := path.Clean(remoteRoot)
-	cleanRemotePath := path.Clean(remotePath)
-	relative := strings.TrimPrefix(cleanRemotePath, cleanRemoteRoot)
-	relative = strings.TrimPrefix(relative, "/")
-	target := filepath.Join(cleanRoot, filepath.FromSlash(relative))
+	target := localTargetPath(cleanRoot, remoteRoot, remotePath)
 	rel, err := filepath.Rel(cleanRoot, target)
 	if err != nil {
 		return err
@@ -467,4 +390,12 @@ func ensureTargetUnderRoot(root string, remoteRoot string, remotePath string) er
 		return newTransferError("SyncOnce destination path escaped configured root", errInvalidOptions)
 	}
 	return nil
+}
+
+func localTargetPath(root string, remoteRoot string, remotePath string) string {
+	cleanRemoteRoot := path.Clean(remoteRoot)
+	cleanRemotePath := path.Clean(remotePath)
+	relative := strings.TrimPrefix(cleanRemotePath, cleanRemoteRoot)
+	relative = strings.TrimPrefix(relative, "/")
+	return filepath.Join(filepath.Clean(root), filepath.FromSlash(relative))
 }

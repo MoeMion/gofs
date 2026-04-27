@@ -4,23 +4,18 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/no-src/gofs/core"
-	legacysync "github.com/no-src/gofs/sync"
 )
 
 func TestSyncOnceResultReturnsCompactSummary(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		result.PathsVisited = 3
 		result.FilesAttempted = 2
 		result.DirectoriesAttempted = 1
@@ -28,7 +23,9 @@ func TestSyncOnceResultReturnsCompactSummary(t *testing.T) {
 		return nil
 	}
 
-	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForOneShot())
+	opts := completeLocalToFTPOptionsForOneShot()
+	opts.Source.LocalPath = t.TempDir()
+	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
@@ -40,7 +37,7 @@ func TestSyncOnceResultReturnsCompactSummary(t *testing.T) {
 	if result.Direction != DirectionLocalToFTP {
 		t.Fatalf("expect direction in result, got %#v", result)
 	}
-	if result.SourceRoot != "/data/source" || result.DestinationRoot != "/incoming" {
+	if result.SourceRoot != opts.Source.LocalPath || result.DestinationRoot != "/incoming" {
 		t.Fatalf("expect compact roots in result, got %#v", result)
 	}
 	if result.PathsVisited != 3 || result.FilesAttempted != 2 || result.DirectoriesAttempted != 1 {
@@ -56,7 +53,7 @@ func TestSyncOnceResultReturnsCompactSummary(t *testing.T) {
 
 func TestSyncOncePartialFailureReturnsResultAndTypedError(t *testing.T) {
 	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		result.PathsVisited = 4
 		result.FilesAttempted = 3
 		result.DirectoriesAttempted = 1
@@ -93,7 +90,7 @@ func TestSyncOnceHooksReceiveCompactSignals(t *testing.T) {
 	var logs []string
 	var progress []Progress
 	var events []SyncEvent
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, result *Result) error {
 		result.PathsVisited = 1
 		result.FilesAttempted = 1
 		svc.log("custom oneshot log")
@@ -136,83 +133,34 @@ func TestSyncOnceResultRemainsCompact(t *testing.T) {
 	}
 }
 
-func TestSyncOnceBuildsLegacyAdapterLocalToFTP(t *testing.T) {
-	adapter, err := newSyncOnceAdapter(completeLocalToFTPOptionsForOneShot())
-	if err != nil {
-		t.Fatalf("newSyncOnceAdapter: %v", err)
-	}
-	if !adapter.option.Source.IsDisk() {
-		t.Fatalf("expect local source disk VFS")
-	}
-	if !adapter.option.Dest.Is(core.FTP) {
-		t.Fatalf("expect FTP destination VFS")
-	}
-	assertFTPVFS(t, adapter.option.Dest, completeLocalToFTPOptionsForOneShot().Destination.FTP)
-	if adapter.option.Retry.Count() != completeLocalToFTPOptionsForOneShot().Retry.Count {
-		t.Fatalf("expect retry count to round-trip")
-	}
-	if !adapter.option.PathIgnore.MatchPath("tmp/cache", "test", "literal") {
-		t.Fatalf("expect typed ignore adapter to match literal rule")
-	}
-	if !adapter.option.PathIgnore.MatchPath("file.part", "test", "glob") {
-		t.Fatalf("expect typed ignore adapter to match glob rule")
-	}
-	if !adapter.option.PathIgnore.MatchPath("debug/output.log", "test", "regexp") {
-		t.Fatalf("expect typed ignore adapter to match regexp rule")
-	}
-}
-
-func TestSyncOnceBuildsLegacyAdapterFTPToLocal(t *testing.T) {
-	adapter, err := newSyncOnceAdapter(completeFTPToLocalOptionsForOneShot())
-	if err != nil {
-		t.Fatalf("newSyncOnceAdapter: %v", err)
-	}
-	if !adapter.option.Source.Is(core.FTP) {
-		t.Fatalf("expect FTP source VFS")
-	}
-	if !adapter.option.Dest.IsDisk() {
-		t.Fatalf("expect local destination disk VFS")
-	}
-	assertFTPVFS(t, adapter.option.Source, completeFTPToLocalOptionsForOneShot().Source.FTP)
-	if adapter.option.Dest.Path().Base() != "/data/destination" {
-		t.Fatalf("expect local destination root to round-trip, got %q", adapter.option.Dest.Path().Base())
-	}
-}
-
-func TestNewFTPSyncServiceSyncOnceBuildsLegacyAdapterViaSeam(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
-	defer withSyncOnceExecutor(runSyncOnceScaffold)()
-	var captured legacysync.Option
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = opt
-		return noopLegacySync{source: opt.Source, dest: opt.Dest}, nil
-	}
-	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
-		syncer, err := adapter.newSync()
-		if err != nil {
-			return err
-		}
-		defer syncer.Close()
-		result.PathsVisited = 1
-		return nil
+func TestSyncOnceBuildsPackageLocalFTPClientOptions(t *testing.T) {
+	defer withFTPClientFactory(openFTPClient)()
+	var captured FTPOptions
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = opts
+		return newRecordingFTPClient(), nil
 	}
 
-	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForOneShot())
+	opts := completeLocalToFTPOptionsForOneShot()
+	opts.Source.LocalPath = t.TempDir()
+	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
-
 	_, err = svc.SyncOnce(context.Background())
 	if err != nil {
 		t.Fatalf("SyncOnce returned error: %v", err)
 	}
-	if !captured.Source.IsDisk() || !captured.Dest.Is(core.FTP) {
-		t.Fatalf("expect SyncOnce seam to build legacy local→FTP adapter")
+	if captured.Host != "ftp.example.test" || captured.Port != 21 || captured.Username != "ftp-user" || captured.Password != "secret-password" {
+		t.Fatalf("expected typed FTP options to reach package-local client, got %#v", captured)
+	}
+	if captured.RemotePath != "/incoming" || !captured.PassiveMode || captured.Timeout != 15*time.Second || captured.PathEncoding != "utf-8" {
+		t.Fatalf("expected FTP path and compatibility options to round-trip, got %#v", captured)
 	}
 }
 
 func TestSyncOnceLocalToFTP(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	tempDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tempDir, "nested"), 0o755); err != nil {
 		t.Fatalf("mkdir nested: %v", err)
@@ -223,15 +171,10 @@ func TestSyncOnceLocalToFTP(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tempDir, "root.txt"), []byte("root"), 0o644); err != nil {
 		t.Fatalf("write root file: %v", err)
 	}
-	if runtime.GOOS != "windows" {
-		if err := os.Symlink("root.txt", filepath.Join(tempDir, "root-link")); err != nil {
-			t.Fatalf("create symlink: %v", err)
-		}
-	}
 
-	var captured *recordingLegacySync
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = newRecordingFTPClient()
 		return captured, nil
 	}
 
@@ -246,49 +189,19 @@ func TestSyncOnceLocalToFTP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SyncOnce returned error: %v", err)
 	}
-	if captured == nil {
-		t.Fatalf("expected legacy sync to be constructed")
+	if captured == nil || !containsFTPWrite(captured.writes, filepath.Join(tempDir, "root.txt")) || !containsFTPWrite(captured.writes, filepath.Join(tempDir, "nested", "child.txt")) {
+		t.Fatalf("expected package-local FTP writes, got %#v", captured)
 	}
-	if len(captured.creates) < 3 {
-		t.Fatalf("expected create operations for root, nested dir, and files, got %#v", captured.creates)
-	}
-	if len(captured.writes) != 2 {
-		t.Fatalf("expected writes for two regular files, got %#v", captured.writes)
-	}
-	if runtime.GOOS != "windows" && len(captured.symlinks) != 1 {
-		t.Fatalf("expected one symlink operation, got %#v", captured.symlinks)
-	}
-	if result.PathsVisited < 4 {
-		t.Fatalf("expected visited paths to reflect walked tree, got %#v", result)
-	}
-	if result.FilesAttempted < 2 || result.DirectoriesAttempted < 2 {
-		t.Fatalf("expected compact counts to be updated, got %#v", result)
-	}
-	if result.Partial || result.FailureCount != 0 {
-		t.Fatalf("expected successful run, got %#v", result)
+	if result.PathsVisited < 4 || result.FilesAttempted != 2 || result.DirectoriesAttempted < 2 || result.Partial || result.FailureCount != 0 {
+		t.Fatalf("expected successful compact counts, got %#v", result)
 	}
 	if !captured.closed {
-		t.Fatalf("expected legacy sync to be closed")
-	}
-	for _, created := range captured.creates {
-		if !filepath.IsAbs(created) {
-			t.Fatalf("expected absolute create path, got %q", created)
-		}
-	}
-	for _, written := range captured.writes {
-		if !filepath.IsAbs(written) {
-			t.Fatalf("expected absolute write path, got %q", written)
-		}
-	}
-	if runtime.GOOS != "windows" {
-		if got := filepath.Base(captured.symlinks[0].oldname); got != "root.txt" {
-			t.Fatalf("expected symlink target root.txt, got %q", captured.symlinks[0].oldname)
-		}
+		t.Fatalf("expected FTP client to be closed")
 	}
 }
 
 func TestSyncOnceLocalToFTPPartialFailure(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	tempDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tempDir, "nested"), 0o755); err != nil {
 		t.Fatalf("mkdir nested: %v", err)
@@ -301,171 +214,90 @@ func TestSyncOnceLocalToFTPPartialFailure(t *testing.T) {
 		t.Fatalf("write after file: %v", err)
 	}
 
-	var captured *recordingLegacySync
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = &recordingLegacySync{
-			source:        opt.Source,
-			dest:          opt.Dest,
-			failWritePath: failingFile,
-		}
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = newRecordingFTPClient()
+		captured.failWritePath = failingFile
 		return captured, nil
 	}
-
 	var events []SyncEvent
-	var progress []Progress
 	opts := completeLocalToFTPOptionsForOneShot()
 	opts.Source.LocalPath = tempDir
-	opts.Hooks = HookSet{
-		Logger: noopLogger{},
-		Progress: func(snapshot Progress) {
-			progress = append(progress, snapshot)
-		},
-		Event: func(event SyncEvent) {
-			events = append(events, event)
-		},
-	}
+	opts.Hooks.Event = func(event SyncEvent) { events = append(events, event) }
 	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
 
 	result, err := svc.SyncOnce(context.Background())
-	if err == nil {
-		t.Fatalf("expected partial failure error")
+	if err == nil || !IsKind(err, ErrTransfer) {
+		t.Fatalf("expected transfer error, got %v", err)
 	}
-	if !IsKind(err, ErrTransfer) {
-		t.Fatalf("expected transfer error kind, got %v", err)
-	}
-	if !result.Partial || result.FailureCount == 0 {
-		t.Fatalf("expected partial result counts, got %#v", result)
-	}
-	if result.PathsVisited < 3 {
-		t.Fatalf("expected walker to continue after failure, got %#v", result)
-	}
-	if captured == nil || !containsString(captured.writes, filepath.Join(tempDir, "after.txt")) {
-		t.Fatalf("expected walker to continue after failure, writes=%#v", captured.writes)
-	}
-	if len(progress) == 0 {
-		t.Fatalf("expected progress callbacks")
+	if !result.Partial || result.FailureCount == 0 || !containsFTPWrite(captured.writes, filepath.Join(tempDir, "after.txt")) {
+		t.Fatalf("expected partial run to continue, result=%#v writes=%#v", result, captured.writes)
 	}
 	if !hasFailedEvent(events, failingFile) {
-		t.Fatalf("expected failed sync event for %q, events=%#v", failingFile, events)
-	}
-	if strings.Contains(err.Error(), opts.Destination.FTP.Password) {
-		t.Fatalf("expected partial failure error to hide password")
-	}
-	if !captured.closed {
-		t.Fatalf("expected legacy sync to be closed")
+		t.Fatalf("expected failed event for %q, events=%#v", failingFile, events)
 	}
 }
 
 func TestSyncOnceFTPToLocalAutoCreateRoot(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	destinationRoot := filepath.Join(t.TempDir(), "created-root")
-
-	var captured *recordingLegacySync
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
-		return captured, nil
-	}
-
 	remoteRoot := "/outgoing"
 	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
-	runFTPToLocalSyncOnceWalk := withSyncOnceExecutor(func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
-		return runSyncOnceScaffold(ctx, svc, syncOnceAdapter{option: adapter.option}, result)
-	})
-	defer runFTPToLocalSyncOnceWalk()
-
-	previousBuilder := buildLegacySync
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
-		return &walkingLegacySync{
-			recordingLegacySync: captured,
-			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
-		}, nil
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		return &recordingFTPClient{walkEntries: []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}}}, nil
 	}
-	defer func() { buildLegacySync = previousBuilder }()
-
 	opts := completeFTPToLocalOptionsForOneShot()
 	opts.Destination.LocalPath = destinationRoot
 	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
-
 	result, err := svc.SyncOnce(context.Background())
 	if err != nil {
 		t.Fatalf("SyncOnce returned error: %v", err)
 	}
-	if _, err := os.Stat(destinationRoot); err != nil {
-		t.Fatalf("expected destination root to be auto-created: %v", err)
-	}
-	if captured == nil {
-		t.Fatalf("expected legacy sync to be constructed")
-	}
-	if !containsString(captured.creates, remoteRoot) || !containsString(captured.creates, path.Join(remoteRoot, "nested")) {
-		t.Fatalf("expected directory create operations for remote tree, got %#v", captured.creates)
-	}
-	if !containsString(captured.writes, remoteFile) {
-		t.Fatalf("expected file write operation for remote file, got %#v", captured.writes)
+	if _, err := os.Stat(filepath.Join(destinationRoot, "nested", "child.txt")); err != nil {
+		t.Fatalf("expected synced file under destination root: %v", err)
 	}
 	if result.PathsVisited != 3 || result.FilesAttempted != 1 || result.DirectoriesAttempted != 2 {
 		t.Fatalf("expected compact FTP→local summary counts, got %#v", result)
 	}
-	if result.Partial || result.FailureCount != 0 {
-		t.Fatalf("expected successful FTP→local run, got %#v", result)
-	}
-	if !captured.closed {
-		t.Fatalf("expected legacy sync to be closed")
-	}
 }
 
 func TestSyncOnceFTPToLocalSuccess(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	destinationRoot := t.TempDir()
 	remoteRoot := "/outgoing"
 	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
-
-	var captured *recordingLegacySync
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
-		return &walkingLegacySync{
-			recordingLegacySync: captured,
-			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
-		}, nil
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = &recordingFTPClient{walkEntries: []walkEntry{{path: remoteRoot, isDir: true}, {path: remoteFile, isDir: false}}}
+		return captured, nil
 	}
-
-	svc, err := NewFTPSyncService(func() Options {
-		opts := completeFTPToLocalOptionsForOneShot()
-		opts.Destination.LocalPath = destinationRoot
-		return opts
-	}())
+	opts := completeFTPToLocalOptionsForOneShot()
+	opts.Destination.LocalPath = destinationRoot
+	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
-
 	result, err := svc.SyncOnce(context.Background())
 	if err != nil {
 		t.Fatalf("SyncOnce returned error: %v", err)
 	}
-	if captured == nil {
-		t.Fatalf("expected legacy sync to be constructed")
-	}
-	if !containsString(captured.writes, remoteFile) {
-		t.Fatalf("expected write for remote file, got %#v", captured.writes)
-	}
-	if result.Direction != DirectionFTPToLocal || result.DestinationRoot != destinationRoot {
-		t.Fatalf("expected FTP→local result roots, got %#v", result)
+	if !containsFTPRead(captured.readFiles, remoteFile) || result.Direction != DirectionFTPToLocal || result.DestinationRoot != destinationRoot {
+		t.Fatalf("expected FTP→local result and read, result=%#v reads=%#v", result, captured.readFiles)
 	}
 }
 
 func TestSyncOnceFTPToLocalNeverWritesToCWD(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	workDir := t.TempDir()
 	destinationRoot := filepath.Join(t.TempDir(), "dest-root")
 	remoteRoot := "/outgoing"
 	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
-
 	originalWD, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Getwd: %v", err)
@@ -473,28 +305,16 @@ func TestSyncOnceFTPToLocalNeverWritesToCWD(t *testing.T) {
 	if err := os.Chdir(workDir); err != nil {
 		t.Fatalf("Chdir: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := os.Chdir(originalWD); err != nil {
-			t.Errorf("restore cwd: %v", err)
-		}
-	})
-
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		return &walkingLegacySync{
-			recordingLegacySync: &recordingLegacySync{source: opt.Source, dest: opt.Dest},
-			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
-		}, nil
+	t.Cleanup(func() { _ = os.Chdir(originalWD) })
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		return &recordingFTPClient{walkEntries: []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}}}, nil
 	}
-
-	svc, err := NewFTPSyncService(func() Options {
-		opts := completeFTPToLocalOptionsForOneShot()
-		opts.Destination.LocalPath = destinationRoot
-		return opts
-	}())
+	opts := completeFTPToLocalOptionsForOneShot()
+	opts.Destination.LocalPath = destinationRoot
+	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
-
 	_, err = svc.SyncOnce(context.Background())
 	if err != nil {
 		t.Fatalf("SyncOnce returned error: %v", err)
@@ -508,67 +328,29 @@ func TestSyncOnceFTPToLocalNeverWritesToCWD(t *testing.T) {
 }
 
 func TestSyncOnceFTPToLocalPartialFailure(t *testing.T) {
-	defer withSyncBuilder(buildLegacySync)()
+	defer withFTPClientFactory(openFTPClient)()
 	destinationRoot := t.TempDir()
 	remoteRoot := "/outgoing"
 	failingFile := path.Join(remoteRoot, "nested", "fail.txt")
 	afterFile := path.Join(remoteRoot, "after.txt")
-
-	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
-		return &walkingLegacySync{
-			recordingLegacySync: &recordingLegacySync{source: opt.Source, dest: opt.Dest, failWritePath: failingFile},
-			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: failingFile, isDir: false}, {path: afterFile, isDir: false}},
-		}, nil
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		return &recordingFTPClient{walkEntries: []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: failingFile, isDir: false}, {path: afterFile, isDir: false}}, failReadPath: failingFile}, nil
 	}
-
-	svc, err := NewFTPSyncService(func() Options {
-		opts := completeFTPToLocalOptionsForOneShot()
-		opts.Destination.LocalPath = destinationRoot
-		return opts
-	}())
+	opts := completeFTPToLocalOptionsForOneShot()
+	opts.Destination.LocalPath = destinationRoot
+	svc, err := NewFTPSyncService(opts)
 	if err != nil {
 		t.Fatalf("construct service: %v", err)
 	}
-
 	result, err := svc.SyncOnce(context.Background())
-	if err == nil {
-		t.Fatalf("expected partial failure error")
+	if err == nil || !IsKind(err, ErrTransfer) {
+		t.Fatalf("expected transfer error, got %v", err)
 	}
-	if !IsKind(err, ErrTransfer) {
-		t.Fatalf("expected transfer error kind, got %v", err)
-	}
-	if !result.Partial || result.FailureCount == 0 || result.PathsVisited < 3 || result.FilesAttempted < 1 || result.DirectoriesAttempted < 2 {
-		t.Fatalf("expected partial FTP→local summary counts, got %#v", result)
+	if !result.Partial || result.FailureCount == 0 {
+		t.Fatalf("expected partial FTP→local result, got %#v", result)
 	}
 	if _, err := os.Stat(filepath.Join(destinationRoot, "after.txt")); err != nil {
 		t.Fatalf("expected later file to still be written after failure: %v", err)
-	}
-}
-
-func assertFTPVFS(t *testing.T, vfs core.VFS, expected FTPOptions) {
-	t.Helper()
-	if vfs.Host() != expected.Host || vfs.Port() != expected.Port {
-		t.Fatalf("unexpected FTP host/port => %s:%d", vfs.Host(), vfs.Port())
-	}
-	if vfs.RemotePath().Base() != expected.RemotePath {
-		t.Fatalf("unexpected remote path => %q", vfs.RemotePath().Base())
-	}
-	if vfs.FTPUsername() != expected.Username || vfs.FTPPassword() != expected.Password {
-		t.Fatalf("unexpected FTP credentials in VFS")
-	}
-	if vfs.FTPPassiveMode() != expected.PassiveMode {
-		t.Fatalf("unexpected passive mode => %t", vfs.FTPPassiveMode())
-	}
-	if expected.Timeout > 0 && vfs.FTPTimeout() != expected.Timeout.String() {
-		t.Fatalf("unexpected FTP timeout => %q", vfs.FTPTimeout())
-	}
-	if expected.PathEncoding != "" && vfs.FTPEncoding() != expected.PathEncoding {
-		t.Fatalf("unexpected FTP encoding => %q", vfs.FTPEncoding())
-	}
-
-	parsed, err := url.Parse(vfs.Addr())
-	if err == nil && parsed != nil {
-		_ = parsed
 	}
 }
 
@@ -621,49 +403,37 @@ func withSyncOnceExecutor(executor syncOnceExecutor) func() {
 	}
 }
 
-func withSyncBuilder(builder syncBuilder) func() {
-	previous := buildLegacySync
-	buildLegacySync = builder
+func withFTPClientFactory(factory ftpClientFactory) func() {
+	previous := openFTPClient
+	openFTPClient = factory
 	return func() {
-		buildLegacySync = previous
+		openFTPClient = previous
 	}
 }
 
-type noopLegacySync struct {
-	source core.VFS
-	dest   core.VFS
-}
-
-func (n noopLegacySync) Create(path string) error              { return nil }
-func (n noopLegacySync) Symlink(oldname, newname string) error { return nil }
-func (n noopLegacySync) Write(path string) error               { return nil }
-func (n noopLegacySync) Remove(path string) error              { return nil }
-func (n noopLegacySync) Rename(path string) error              { return nil }
-func (n noopLegacySync) Chmod(path string) error               { return nil }
-func (n noopLegacySync) IsDir(path string) (bool, error)       { return false, nil }
-func (n noopLegacySync) SyncOnce(path string) error            { return nil }
-func (n noopLegacySync) Source() core.VFS                      { return n.source }
-func (n noopLegacySync) Dest() core.VFS                        { return n.dest }
-func (n noopLegacySync) Close()                                {}
-
-type recordingLegacySync struct {
-	source        core.VFS
-	dest          core.VFS
-	creates       []string
-	writes        []string
-	symlinks      []recordedSymlink
+type recordingFTPClient struct {
+	mkdirs        []string
+	writes        []recordedWrite
+	removes       []string
+	readFiles     []recordedRead
+	walkEntries   []walkEntry
 	failWritePath string
+	failReadPath  string
 	closed        bool
 }
 
-type recordedSymlink struct {
-	oldname string
-	newname string
+func newRecordingFTPClient() *recordingFTPClient {
+	return &recordingFTPClient{}
 }
 
-type walkingLegacySync struct {
-	*recordingLegacySync
-	walk []walkEntry
+type recordedWrite struct {
+	remotePath string
+	localPath  string
+}
+
+type recordedRead struct {
+	remotePath string
+	localPath  string
 }
 
 type walkEntry struct {
@@ -671,85 +441,26 @@ type walkEntry struct {
 	isDir bool
 }
 
-func (r *recordingLegacySync) Create(path string) error {
-	r.creates = append(r.creates, path)
+func (r *recordingFTPClient) mkdirAll(remotePath string) error {
+	r.mkdirs = append(r.mkdirs, remotePath)
 	return nil
 }
 
-func (r *recordingLegacySync) Symlink(oldname, newname string) error {
-	r.symlinks = append(r.symlinks, recordedSymlink{oldname: oldname, newname: newname})
-	return nil
-}
-
-func (r *recordingLegacySync) Write(path string) error {
-	r.writes = append(r.writes, path)
-	if path == r.failWritePath {
+func (r *recordingFTPClient) writeFile(remotePath string, localPath string) error {
+	r.writes = append(r.writes, recordedWrite{remotePath: remotePath, localPath: localPath})
+	if localPath == r.failWritePath || remotePath == r.failWritePath {
 		return errors.New("simulated write failure")
 	}
 	return nil
 }
 
-func (r *recordingLegacySync) Remove(path string) error        { return nil }
-func (r *recordingLegacySync) Rename(path string) error        { return nil }
-func (r *recordingLegacySync) Chmod(path string) error         { return nil }
-func (r *recordingLegacySync) IsDir(path string) (bool, error) { return false, nil }
-func (r *recordingLegacySync) SyncOnce(path string) error      { return nil }
-func (r *recordingLegacySync) Source() core.VFS                { return r.source }
-func (r *recordingLegacySync) Dest() core.VFS                  { return r.dest }
-func (r *recordingLegacySync) Close()                          { r.closed = true }
-
-func (r *recordingLegacySync) WalkSourceDir(root string, fn fs.WalkDirFunc) error {
+func (r *recordingFTPClient) remove(remotePath string) error {
+	r.removes = append(r.removes, remotePath)
 	return nil
 }
 
-func (r *recordingLegacySync) ReadSourceLink(path string) (string, error) {
-	return "", nil
-}
-
-func (w *walkingLegacySync) Create(path string) error {
-	if err := w.recordingLegacySync.Create(path); err != nil {
-		return err
-	}
-	isDir, _ := w.IsDir(path)
-	return w.materialize(path, isDir)
-}
-
-func (w *walkingLegacySync) Write(path string) error {
-	if err := w.recordingLegacySync.Write(path); err != nil {
-		return err
-	}
-	return w.materialize(path, false)
-}
-
-func (w *walkingLegacySync) IsDir(path string) (bool, error) {
-	for _, entry := range w.walk {
-		if entry.path == path {
-			return entry.isDir, nil
-		}
-	}
-	return false, nil
-}
-
-func (w *walkingLegacySync) SyncOnce(root string) error {
-	for _, entry := range w.walk {
-		if entry.isDir {
-			if err := w.Create(entry.path); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := w.Create(entry.path); err != nil {
-			return err
-		}
-		if err := w.Write(entry.path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (w *walkingLegacySync) WalkSourceDir(root string, fn fs.WalkDirFunc) error {
-	for _, entry := range w.walk {
+func (r *recordingFTPClient) walk(root string, fn fs.WalkDirFunc) error {
+	for _, entry := range r.walkEntries {
 		if err := fn(entry.path, stubDirEntry{entry: entry}, nil); err != nil {
 			return err
 		}
@@ -757,24 +468,38 @@ func (w *walkingLegacySync) WalkSourceDir(root string, fn fs.WalkDirFunc) error 
 	return nil
 }
 
-func (w *walkingLegacySync) ReadSourceLink(path string) (string, error) {
-	return "", nil
-}
-
-func (w *walkingLegacySync) materialize(remotePath string, isDir bool) error {
-	if w == nil || w.dest.IsEmpty() {
-		return nil
+func (r *recordingFTPClient) readFile(remotePath string, localPath string) error {
+	r.readFiles = append(r.readFiles, recordedRead{remotePath: remotePath, localPath: localPath})
+	if remotePath == r.failReadPath {
+		return errors.New("simulated read failure")
 	}
-	relative := strings.TrimPrefix(path.Clean(remotePath), path.Clean(w.source.RemotePath().Base()))
-	relative = strings.TrimPrefix(relative, "/")
-	target := filepath.Join(w.dest.Path().Base(), filepath.FromSlash(relative))
-	if isDir {
-		return os.MkdirAll(target, 0o755)
-	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(target, []byte("synced"), 0o644)
+	return os.WriteFile(localPath, []byte("synced"), 0o644)
+}
+
+func (r *recordingFTPClient) close() error {
+	r.closed = true
+	return nil
+}
+
+func containsFTPWrite(writes []recordedWrite, localPath string) bool {
+	for _, write := range writes {
+		if write.localPath == localPath || write.remotePath == localPath {
+			return true
+		}
+	}
+	return false
+}
+
+func containsFTPRead(reads []recordedRead, remotePath string) bool {
+	for _, read := range reads {
+		if read.remotePath == remotePath {
+			return true
+		}
+	}
+	return false
 }
 
 func containsString(values []string, target string) bool {

@@ -67,7 +67,12 @@ Plans:
   3. One-shot sync preserves create, update, delete, rename-relevant, nested path, passive-mode, timeout, and path-encoding behavior from FTP v1.
   4. FTP→local sync writes only under the explicitly configured local endpoint and never silently falls back to the process working directory.
   5. Developer receives a useful structured result summary after a one-shot run instead of relying on terminal output.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Add one-shot result/partial-failure scaffolding and the typed-options adapter into the legacy FTP sync engine.
+- [ ] 06-02-PLAN.md — Implement local→FTP one-shot execution through FTPSyncService while preserving FTP v1 push semantics.
+- [ ] 06-03-PLAN.md — Implement FTP→local one-shot execution with explicit destination-root and cwd-safety regression coverage.
 
 ### Phase 7: Background Disk→FTP Lifecycle
 **Goal**: Developers can run persistent local disk→FTP synchronization from the library with observable lifecycle controls and deterministic shutdown, while FTP→disk background polling remains unavailable in v2.0.

@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-24T09:02:04.579Z"
-last_activity: 2026-04-24
+milestone_name: FTP client sync support
+status: completed
+stopped_at: v1.0 milestone archived
+last_updated: "2026-04-27T03:10:00.000Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 4
   completed_phases: 4
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-23)
+See: .planning/PROJECT.md (updated 2026-04-27)
 
-**Core value:** Add FTP as a first-class sync endpoint with the smallest correct change set, so gofs can cover one more common file transfer protocol without disrupting the existing architecture.
-**Current focus:** Phase 04 — ftp-verification-discoverability complete
+**Core value:** Keep protocol support broad while preserving the existing minimal-change sync architecture.
+**Current focus:** v1.0 milestone archived; next milestone not yet defined
 
 ## Current Position
 
-Phase: 04 (ftp-verification-discoverability) — COMPLETE
-Plan: 3 of 3
-Status: Phase complete
-Last activity: 2026-04-24
+Phase: None
+Plan: None
+Status: Milestone complete
+Last activity: 2026-04-27
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 5
+- Total plans completed: 8
 - Average duration: 34min
 - Total execution time: 0.6 hours
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100%
 | 01-ftp-endpoint-contract-routing | 1 | 34min | 34min |
 | 01 | 2 | - | - |
 | 02 | 2 | - | - |
+| 04 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -110,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T09:02:04.554Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-04-27T03:10:00.000Z
+Stopped at: v1.0 milestone archived
 Resume file: None

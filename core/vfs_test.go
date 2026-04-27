@@ -19,9 +19,10 @@ const (
 	testVFSSFTPSSHConfigDestPathWithNoPort          = "sftp://example.com?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_user=sftp_user&ssh_pass=sftp_pwd&ssh_key=./id_rsa&ssh_key_pass=123456&ssh_host_key=/root/.ssh/known_hosts&ssh_config=true"
 	testVFSSFTPSSHConfigDestPathWithCover           = "sftp://example.com:22?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_user=sftp_user&ssh_pass=sftp_pwd&ssh_key=./id_rsa&ssh_key_pass=123456&ssh_host_key=/root/.ssh/known_hosts&ssh_config=true"
 	testVFSSFTPSSHConfigDestPathWithDefaultIdentity = "sftp://default-identity?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&ssh_pass=sftp_pwd&ssh_config=true"
-	testVFSFTPSrcPath                               = "ftp://127.0.0.1:21?path=./dest&remote_path=/srv/source&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true"
-	testVFSFTPDestPath                              = "ftp://127.0.0.1:21?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true"
+	testVFSFTPSrcPath                               = "ftp://127.0.0.1:21?path=./dest&remote_path=/srv/source&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s"
+	testVFSFTPDestPath                              = "ftp://127.0.0.1:21?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s"
 	testVFSFTPDestPathWithNoPort                    = "ftp://127.0.0.1?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=false"
+	testVFSFTPDestPathWithGBKEncoding               = "ftp://127.0.0.1:21?path=./source&remote_path=/home/remote/dest&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_encoding=gbk"
 	testVFSMinIODestPath                            = "minio://127.0.0.1:9000?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&secure=true"
 	testVFSMinIODestPathWithNoPort                  = "minio://127.0.0.1?mode=server&local_sync_disabled=true&path=./source&remote_path=/home/remote/dest&secure=false"
 )
@@ -118,6 +119,18 @@ func TestNewVFS_WithDefaultPort(t *testing.T) {
 				t.Errorf("test new vfs with default port error, expect:%d, actual:%d", tc.expectPort, actual.Port())
 			}
 		})
+	}
+}
+
+func TestNewVFS_FTPPassiveModeDefaultsToTrue(t *testing.T) {
+	vfs := NewVFS(testVFSFTPDestPath)
+	if !vfs.FTPPassiveMode() {
+		t.Fatal("expect ftp passive mode default to true when ftp_passive is omitted")
+	}
+
+	vfs = NewVFS(testVFSFTPDestPathWithNoPort)
+	if vfs.FTPPassiveMode() {
+		t.Fatal("expect explicit ftp_passive=false to disable passive mode")
 	}
 }
 
@@ -293,6 +306,7 @@ func compareVFS(t *testing.T, expect, actual VFS) {
 	assert(t, expectFTPConfig.Username == actualFTPConfig.Username, "compare vfs FTPConfig.Username error, expect:%v, actual:%v", expectFTPConfig.Username, actualFTPConfig.Username)
 	assert(t, expectFTPConfig.Password == actualFTPConfig.Password, "compare vfs FTPConfig.Password error, expect:%v, actual:%v", expectFTPConfig.Password, actualFTPConfig.Password)
 	assert(t, expectFTPConfig.Timeout == actualFTPConfig.Timeout, "compare vfs FTPConfig.Timeout error, expect:%v, actual:%v", expectFTPConfig.Timeout, actualFTPConfig.Timeout)
+	assert(t, expectFTPConfig.Encoding == actualFTPConfig.Encoding, "compare vfs FTPConfig.Encoding error, expect:%v, actual:%v", expectFTPConfig.Encoding, actualFTPConfig.Encoding)
 	assert(t, expectFTPConfig.PassiveMode == actualFTPConfig.PassiveMode, "compare vfs FTPConfig.PassiveMode error, expect:%v, actual:%v", expectFTPConfig.PassiveMode, actualFTPConfig.PassiveMode)
 	expectSSHConfig := expect.SSHConfig()
 	actualSSHConfig := actual.SSHConfig()
@@ -317,6 +331,9 @@ func TestNewVFS_FTPConfig(t *testing.T) {
 	if vfs.FTPTimeout() != "30s" {
 		t.Errorf("test ftp timeout error, expect:%s, actual:%s", "30s", vfs.FTPTimeout())
 	}
+	if vfs.FTPEncoding() != "auto" {
+		t.Errorf("test ftp encoding default error, expect:%s, actual:%s", "auto", vfs.FTPEncoding())
+	}
 	if !vfs.FTPPassiveMode() {
 		t.Errorf("test ftp passive mode error, expect:true, actual:%v", vfs.FTPPassiveMode())
 	}
@@ -336,8 +353,18 @@ func TestNewVFS_FTPConfigWithoutOptionalTimeout(t *testing.T) {
 	if vfs.FTPTimeout() != "" {
 		t.Errorf("test ftp timeout optional error, expect empty, actual:%s", vfs.FTPTimeout())
 	}
+	if vfs.FTPEncoding() != "auto" {
+		t.Errorf("test ftp encoding default without explicit value error, expect:%s, actual:%s", "auto", vfs.FTPEncoding())
+	}
 	if vfs.FTPPassiveMode() {
 		t.Errorf("test ftp passive mode false error, expect:false, actual:%v", vfs.FTPPassiveMode())
+	}
+}
+
+func TestNewVFS_FTPConfigWithExplicitEncoding(t *testing.T) {
+	vfs := NewVFS(testVFSFTPDestPathWithGBKEncoding)
+	if vfs.FTPEncoding() != "gbk" {
+		t.Errorf("test ftp encoding explicit error, expect:%s, actual:%s", "gbk", vfs.FTPEncoding())
 	}
 }
 

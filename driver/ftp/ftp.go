@@ -96,6 +96,7 @@ type ftpDriver struct {
 	driverName      string
 	remoteAddr      string
 	ftpConfig       core.FTPConfig
+	pathCodec       *ftpPathCodec
 	r               retry.Retry
 	mu              sync.Mutex
 	online          bool
@@ -118,10 +119,16 @@ func newFTPDriver(remoteAddr string, ftpConfig core.FTPConfig, autoReconnect boo
 	if dial == nil {
 		dial = defaultDial
 	}
+	pathCodec, err := newFTPPathCodec(ftpConfig)
+	if err != nil {
+		logger.Error(err, "invalid ftp encoding config, fallback to auto")
+		pathCodec = &ftpPathCodec{mode: ftpEncodingAuto}
+	}
 	return &ftpDriver{
 		driverName:    "ftp",
 		remoteAddr:    remoteAddr,
 		ftpConfig:     ftpConfig,
+		pathCodec:     pathCodec,
 		r:             r,
 		autoReconnect: autoReconnect,
 		maxTranRate:   maxTranRate,
@@ -170,6 +177,9 @@ func (d *ftpDriver) connectLocked() error {
 			return fmt.Errorf("ftp: invalid timeout %q: %w", d.ftpConfig.Timeout, err)
 		}
 		options = append(options, ftp.DialWithTimeout(timeout))
+	}
+	if d.pathCodec != nil && d.pathCodec.disableUTF8Feature() {
+		options = append(options, ftp.DialWithDisabledUTF8(true))
 	}
 
 	client, err := d.dial(d.remoteAddr, options...)
@@ -256,7 +266,10 @@ func (d *ftpDriver) isTransportLost(err error) bool {
 }
 
 func (d *ftpDriver) MkdirAll(path string) error {
-	cleanPath := cleanFTPPath(path)
+	cleanPath, err := d.encodePath(path)
+	if err != nil {
+		return err
+	}
 	if cleanPath == "." || cleanPath == "/" {
 		return nil
 	}
@@ -282,8 +295,12 @@ func (d *ftpDriver) MkdirAll(path string) error {
 }
 
 func (d *ftpDriver) Create(path string) error {
+	encodedPath, err := d.encodePath(path)
+	if err != nil {
+		return err
+	}
 	return d.reconnectIfLost(func(client ftpConn) error {
-		return client.Stor(cleanFTPPath(path), strings.NewReader(""))
+		return client.Stor(encodedPath, strings.NewReader(""))
 	})
 }
 
@@ -292,7 +309,10 @@ func (d *ftpDriver) Symlink(oldname, newname string) error {
 }
 
 func (d *ftpDriver) Remove(path string) error {
-	cleanPath := cleanFTPPath(path)
+	cleanPath, err := d.encodePath(path)
+	if err != nil {
+		return err
+	}
 	return d.reconnectIfLost(func(client ftpConn) error {
 		entry, err := client.GetEntry(cleanPath)
 		if err != nil {
@@ -312,17 +332,29 @@ func (d *ftpDriver) Remove(path string) error {
 }
 
 func (d *ftpDriver) Rename(oldPath, newPath string) error {
+	encodedOldPath, err := d.encodePath(oldPath)
+	if err != nil {
+		return err
+	}
+	encodedNewPath, err := d.encodePath(newPath)
+	if err != nil {
+		return err
+	}
 	return d.reconnectIfLost(func(client ftpConn) error {
-		return client.Rename(cleanFTPPath(oldPath), cleanFTPPath(newPath))
+		return client.Rename(encodedOldPath, encodedNewPath)
 	})
 }
 
 func (d *ftpDriver) Chtimes(path string, aTime time.Time, mTime time.Time) error {
+	encodedPath, err := d.encodePath(path)
+	if err != nil {
+		return err
+	}
 	return d.reconnectIfLost(func(client ftpConn) error {
 		if !client.IsSetTimeSupported() {
 			return errFTPChtimesUnsupported
 		}
-		if err := client.SetTime(cleanFTPPath(path), mTime); err != nil {
+		if err := client.SetTime(encodedPath, mTime); err != nil {
 			if isFTPUnsupported(err) {
 				return errFTPChtimesUnsupported
 			}
@@ -337,9 +369,13 @@ func (d *ftpDriver) WalkDir(root string, fn fs.WalkDirFunc) error {
 		path  string
 		entry fs.DirEntry
 	}
+	encodedRoot, err := d.encodePath(root)
+	if err != nil {
+		return err
+	}
 	entries := make([]walkEntry, 0, 16)
-	err := d.reconnectIfLost(func(client ftpConn) error {
-		walker := client.Walk(cleanFTPPath(root))
+	err = d.reconnectIfLost(func(client ftpConn) error {
+		walker := client.Walk(encodedRoot)
 		for {
 			next := walker.Next()
 			if err := walker.Err(); err != nil {
@@ -352,9 +388,11 @@ func (d *ftpDriver) WalkDir(root string, fn fs.WalkDirFunc) error {
 			if entry == nil {
 				continue
 			}
-			fi := newFTPFileInfo(entry, walker.Path(), d.listTimePrecise)
+			decodedPath := d.decodePath(walker.Path())
+			decodedEntry := d.decodeEntry(entry)
+			fi := newFTPFileInfo(decodedEntry, decodedPath, d.listTimePrecise)
 			entries = append(entries, walkEntry{
-				path:  walker.Path(),
+				path:  decodedPath,
 				entry: fs.FileInfoToDirEntry(fi),
 			})
 		}
@@ -372,20 +410,25 @@ func (d *ftpDriver) WalkDir(root string, fn fs.WalkDirFunc) error {
 
 func (d *ftpDriver) Open(path string) (http.File, error) {
 	var file http.File
-	err := d.reconnectIfLost(func(client ftpConn) error {
-		entry, err := client.GetEntry(cleanFTPPath(path))
+	encodedPath, err := d.encodePath(path)
+	if err != nil {
+		return nil, err
+	}
+	err = d.reconnectIfLost(func(client ftpConn) error {
+		entry, err := client.GetEntry(encodedPath)
 		if err != nil {
 			return err
 		}
+		entry = d.decodeEntry(entry)
 		if entry != nil && entry.Type == ftp.EntryTypeFolder {
-			file = newFTPDirFile(client, cleanFTPPath(path), d.listTimePrecise)
+			file = newFTPDirFile(client, encodedPath, path, d.listTimePrecise, d.pathCodec)
 			return nil
 		}
-		resp, err := client.Retr(cleanFTPPath(path))
+		resp, err := client.Retr(encodedPath)
 		if err != nil {
 			return err
 		}
-		file = rate.NewFile(newFTPFile(resp, client, cleanFTPPath(path), d.listTimePrecise), d.maxTranRate, d.logger)
+		file = rate.NewFile(newFTPFile(resp, client, encodedPath, path, d.listTimePrecise, d.pathCodec), d.maxTranRate, d.logger)
 		return nil
 	})
 	return file, err
@@ -401,26 +444,37 @@ func (d *ftpDriver) Lstat(path string) (fs.FileInfo, error) {
 
 func (d *ftpDriver) stat(path string) (fs.FileInfo, error) {
 	var fi fs.FileInfo
-	err := d.reconnectIfLost(func(client ftpConn) error {
-		entry, err := client.GetEntry(cleanFTPPath(path))
+	encodedPath, err := d.encodePath(path)
+	if err != nil {
+		return nil, err
+	}
+	err = d.reconnectIfLost(func(client ftpConn) error {
+		entry, err := client.GetEntry(encodedPath)
 		if err != nil {
 			return err
 		}
-		fi = newFTPFileInfo(entry, cleanFTPPath(path), d.listTimePrecise)
+		entry = d.decodeEntry(entry)
+		fi = newFTPFileInfo(entry, path, d.listTimePrecise)
 		return nil
 	})
 	return fi, err
 }
 
 func (d *ftpDriver) GetFileTime(path string) (cTime time.Time, aTime time.Time, mTime time.Time, err error) {
+	encodedPath, encodeErr := d.encodePath(path)
+	if encodeErr != nil {
+		err = encodeErr
+		return
+	}
 	err = d.reconnectIfLost(func(client ftpConn) error {
-		entry, entryErr := client.GetEntry(cleanFTPPath(path))
+		entry, entryErr := client.GetEntry(encodedPath)
 		if entryErr != nil {
 			return entryErr
 		}
+		entry = d.decodeEntry(entry)
 		mtime := time.Time{}
 		if client.IsGetTimeSupported() {
-			mtime, entryErr = client.GetTime(cleanFTPPath(path))
+			mtime, entryErr = client.GetTime(encodedPath)
 			if entryErr != nil && !isFTPUnsupported(entryErr) {
 				return entryErr
 			}
@@ -440,14 +494,39 @@ func (d *ftpDriver) GetFileTime(path string) (cTime time.Time, aTime time.Time, 
 }
 
 func (d *ftpDriver) Write(src string, dest string) error {
+	encodedDest, err := d.encodePath(dest)
+	if err != nil {
+		return err
+	}
 	return d.reconnectIfLost(func(client ftpConn) error {
 		srcFile, err := os.Open(src)
 		if err != nil {
 			return err
 		}
 		defer srcFile.Close()
-		return client.Stor(cleanFTPPath(dest), rate.NewReader(srcFile, d.maxTranRate, d.logger))
+		return client.Stor(encodedDest, rate.NewReader(srcFile, d.maxTranRate, d.logger))
 	})
+}
+
+func (d *ftpDriver) encodePath(path string) (string, error) {
+	if d.pathCodec == nil {
+		return cleanFTPPath(path), nil
+	}
+	return d.pathCodec.encodePath(path)
+}
+
+func (d *ftpDriver) decodePath(path string) string {
+	if d.pathCodec == nil {
+		return cleanFTPPath(path)
+	}
+	return d.pathCodec.decodePath(path)
+}
+
+func (d *ftpDriver) decodeEntry(entry *ftp.Entry) *ftp.Entry {
+	if d.pathCodec == nil {
+		return entry
+	}
+	return d.pathCodec.decodeEntry(entry)
 }
 
 func (d *ftpDriver) ReadLink(path string) (string, error) {

@@ -458,17 +458,21 @@ $ gofs -source="sftp://127.0.0.1:22?remote_path=/gofs_sftp_server&ssh_user=sftp_
 启动一个FTP推送客户端，将发生变更的文件同步到FTP服务器
 
 ```bash
-$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=auto"
 ```
 
-FTP v1 限制说明：v1 仅支持明文 FTP，不支持 FTPS，并且必须设置 `ftp_passive=true`，因为当前不支持主动模式。
+FTP v1 限制说明：v1 仅支持明文 FTP，不支持 FTPS，默认启用被动模式，当前仍不支持主动模式。
+FTP 路径编码默认使用 `ftp_encoding=auto`，优先按 UTF-8 处理，遇到非 UTF-8 路径名时回退到 GBK。已知服务端编码时，也可以显式设置 `ftp_encoding=utf8` 或 `ftp_encoding=gbk`。
 
 ### FTP拉取客户端
 
 启动一个FTP拉取客户端，将文件从FTP服务器拉到本地目标路径
 
 ```bash
-$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
+$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=auto" -dest="./dest" -sync_once
+
+# 对已知 GBK 编码服务端，显式指定 gbk 路径编码
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/中文目录&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=gbk" -sync_once
 ```
 
 FTP v1 限制说明：gofs 仅支持磁盘→FTP 与 FTP→磁盘，不支持 FTP↔FTP 同步，并且后端能力失败会显式报错，不会被静默忽略。

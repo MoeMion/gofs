@@ -1,4 +1,4 @@
 source: ./source
-dest: ftp://127.0.0.1:2121?local_sync_disabled=false&path=./dest&remote_path=ftp-push&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_passive=true
+dest: ftp://127.0.0.1:2121?local_sync_disabled=false&path=./dest&remote_path=ftp-push&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_timeout=30s&ftp_encoding=auto
 log_dir: ./ftp-push-client-logs/
 sync_once: true

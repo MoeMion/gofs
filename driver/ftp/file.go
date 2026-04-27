@@ -15,16 +15,20 @@ type ftpFile struct {
 	resp            *ftp.Response
 	client          ftpConn
 	name            string
+	displayName     string
 	listTimePrecise bool
+	pathCodec       *ftpPathCodec
 	closed          bool
 }
 
-func newFTPFile(resp *ftp.Response, client ftpConn, name string, listTimePrecise bool) http.File {
+func newFTPFile(resp *ftp.Response, client ftpConn, name string, displayName string, listTimePrecise bool, pathCodec *ftpPathCodec) http.File {
 	return &ftpFile{
 		resp:            resp,
 		client:          client,
 		name:            name,
+		displayName:     displayName,
 		listTimePrecise: listTimePrecise,
+		pathCodec:       pathCodec,
 	}
 }
 
@@ -59,7 +63,8 @@ func (f *ftpFile) Readdir(count int) ([]fs.FileInfo, error) {
 	}
 	fis := make([]fs.FileInfo, 0, len(entries))
 	for _, entry := range entries {
-		fis = append(fis, newFTPFileInfo(entry, path.Join(f.name, entry.Name), f.listTimePrecise))
+		decoded := f.decodeEntry(entry)
+		fis = append(fis, newFTPFileInfo(decoded, path.Join(f.displayName, decoded.Name), f.listTimePrecise))
 	}
 	if count > 0 && len(fis) > count {
 		fis = fis[:count]
@@ -72,7 +77,8 @@ func (f *ftpFile) Stat() (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newFTPFileInfo(entry, f.name, f.listTimePrecise), nil
+	entry = f.decodeEntry(entry)
+	return newFTPFileInfo(entry, f.displayName, f.listTimePrecise), nil
 }
 
 type ftpDirFile struct {
@@ -81,14 +87,18 @@ type ftpDirFile struct {
 
 	client          ftpConn
 	name            string
+	displayName     string
 	listTimePrecise bool
+	pathCodec       *ftpPathCodec
 }
 
-func newFTPDirFile(client ftpConn, name string, listTimePrecise bool) http.File {
+func newFTPDirFile(client ftpConn, name string, displayName string, listTimePrecise bool, pathCodec *ftpPathCodec) http.File {
 	return &ftpDirFile{
 		client:          client,
 		name:            name,
+		displayName:     displayName,
 		listTimePrecise: listTimePrecise,
+		pathCodec:       pathCodec,
 	}
 }
 
@@ -103,7 +113,8 @@ func (f *ftpDirFile) Readdir(count int) ([]fs.FileInfo, error) {
 	}
 	fis := make([]fs.FileInfo, 0, len(entries))
 	for _, entry := range entries {
-		fis = append(fis, newFTPFileInfo(entry, path.Join(f.name, entry.Name), f.listTimePrecise))
+		decoded := f.decodeEntry(entry)
+		fis = append(fis, newFTPFileInfo(decoded, path.Join(f.displayName, decoded.Name), f.listTimePrecise))
 	}
 	if count > 0 && len(fis) > count {
 		fis = fis[:count]
@@ -116,7 +127,22 @@ func (f *ftpDirFile) Stat() (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newFTPFileInfo(entry, f.name, f.listTimePrecise), nil
+	entry = f.decodeEntry(entry)
+	return newFTPFileInfo(entry, f.displayName, f.listTimePrecise), nil
+}
+
+func (f *ftpFile) decodeEntry(entry *ftp.Entry) *ftp.Entry {
+	if f.pathCodec == nil {
+		return entry
+	}
+	return f.pathCodec.decodeEntry(entry)
+}
+
+func (f *ftpDirFile) decodeEntry(entry *ftp.Entry) *ftp.Entry {
+	if f.pathCodec == nil {
+		return entry
+	}
+	return f.pathCodec.decodeEntry(entry)
 }
 
 func isFTPSuccessReply(err error) bool {

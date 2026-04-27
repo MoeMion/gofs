@@ -478,17 +478,21 @@ $ gofs -source="sftp://127.0.0.1:22?remote_path=/gofs_sftp_server&ssh_user=sftp_
 Start a FTP push client to sync change files to the FTP server.
 
 ```bash
-$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true"
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=auto"
 ```
 
-FTP v1 limitation note: plain FTP only in v1, no FTPS, and `ftp_passive=true` is required because active mode is unsupported.
+FTP v1 limitation note: plain FTP only in v1, no FTPS, passive mode is enabled by default, and active mode remains unsupported.
+FTP path encoding defaults to `ftp_encoding=auto`, which prefers UTF-8 and falls back to GBK for non-UTF-8 path names. You can also set `ftp_encoding=utf8` or `ftp_encoding=gbk` explicitly when the server encoding is known.
 
 ### FTP Pull Client
 
 Start a FTP pull client to pull the files from the FTP server to the local destination path.
 
 ```bash
-$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_passive=true" -dest="./dest" -sync_once
+$ gofs -source="ftp://127.0.0.1:21?remote_path=/gofs_ftp_server&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=auto" -dest="./dest" -sync_once
+
+# Force GBK path encoding for servers that do not expose UTF-8 names
+$ gofs -source="./source" -dest="ftp://127.0.0.1:21?remote_path=/中文目录&ftp_user=ftp_user&ftp_pass=ftp_pwd&ftp_encoding=gbk" -sync_once
 ```
 
 FTP v1 limitation note: gofs supports disk→FTP and FTP→disk flows, but no FTP↔FTP sync, and backend capability failures surface explicitly instead of being ignored.

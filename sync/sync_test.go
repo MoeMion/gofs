@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
-	"net/http"
 	"testing"
 	"time"
 
@@ -166,6 +166,53 @@ func TestNewSync_RoutesDiskToFTPToFTPPushClientSync(t *testing.T) {
 	}
 	if ftpSync.basePath != "/remote/dest" {
 		t.Fatalf("expected FTP base path /remote/dest, got %q", ftpSync.basePath)
+	}
+}
+
+func TestFTPPushClientSync_SkipsImplicitCWDLocalMirrorWhenPathOmitted(t *testing.T) {
+	sourceDir := t.TempDir()
+	workDir := t.TempDir()
+	remoteBase := "/remote/dest"
+	ftpDriver := &fakeFTPDriver{}
+
+	originalWorkDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	if err := os.Chdir(workDir); err != nil {
+		t.Fatalf("Chdir() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalWorkDir); err != nil {
+			t.Errorf("restore Chdir() error = %v", err)
+		}
+	})
+
+	sourceFile := filepath.Join(sourceDir, "leaked.txt")
+	if err := os.WriteFile(sourceFile, []byte("content"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	opt := testSyncOption(t, core.NewDiskVFS(sourceDir), core.NewVFS("ftp://127.0.0.1:21?remote_path="+remoteBase+"&ftp_user=user&ftp_pass=pass&ftp_passive=true"))
+	syncer, err := newDiskSync(opt)
+	if err != nil {
+		t.Fatalf("newDiskSync() error = %v", err)
+	}
+
+	s := &ftpPushClientSync{
+		driverPushClientSync: newDriverPushClientSync(*syncer, remoteBase),
+	}
+	s.driver = ftpDriver
+
+	if err := s.Create(sourceFile); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(workDir, "leaked.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected omitted FTP path not to create a local CWD mirror, stat err=%v", err)
+	}
+	if len(ftpDriver.createCalls) != 1 || ftpDriver.createCalls[0] != "/remote/dest/leaked.txt" {
+		t.Fatalf("expected remote create for /remote/dest/leaked.txt, got %#v", ftpDriver.createCalls)
 	}
 }
 

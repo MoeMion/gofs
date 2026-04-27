@@ -2,11 +2,11 @@
 
 ## What This Is
 
-gofs is an existing Go-based file synchronization system for local and remote filesystem replication. It already supports local disk sync, remote event-driven sync, HTTP and gRPC server surfaces, and storage backends such as SFTP and MinIO; the current project focus is to extend that protocol matrix with minimal-change FTP client sync support.
+gofs is an existing Go-based file synchronization system for local and remote filesystem replication. It supports local disk sync, remote event-driven sync, HTTP and gRPC server surfaces, and storage backends such as SFTP, MinIO, and FTP.
 
 ## Core Value
 
-Add FTP as a first-class sync endpoint with the smallest correct change set, so gofs can cover one more common file transfer protocol without disrupting the existing architecture.
+Keep protocol support broad while preserving the existing minimal-change sync architecture.
 
 ## Requirements
 
@@ -17,15 +17,15 @@ Add FTP as a first-class sync endpoint with the smallest correct change set, so 
 - ✓ Config-driven runtime with CLI entrypoints, background monitoring, and optional web/file server modes — existing
 - ✓ SFTP-backed sync support through the driver and sync abstractions — existing
 - ✓ MinIO/S3-compatible storage sync support through the driver and sync abstractions — existing
+- ✓ FTP can be configured as a sync source endpoint — v1.0
+- ✓ FTP can be configured as a sync destination endpoint — v1.0
+- ✓ FTP connection setup supports host, port, username, password, passive mode, timeout, and path encoding controls — v1.0
+- ✓ FTP disk<->endpoint flows are covered by automated unit and real-server integration tests — v1.0
+- ✓ FTP usage is discoverable in CLI/configuration documentation — v1.0
 
 ### Active
 
-- [ ] FTP can be configured as a sync source endpoint
-- [ ] FTP can be configured as a sync destination endpoint
-- [ ] FTP connection setup supports host, port, username, and password
-- [ ] FTP connection behavior supports passive mode selection and timeout configuration
-- [ ] FTP flows are covered by automated tests on the new protocol path
-- [ ] FTP usage is discoverable in CLI/configuration documentation
+No active milestone requirements are defined.
 
 ### Out of Scope
 
@@ -37,8 +37,9 @@ Add FTP as a first-class sync endpoint with the smallest correct change set, so 
 
 - The repository is a brownfield Go module with established abstractions around `core.VFS`, `driver.Driver`, `sync.Sync`, and `monitor.Monitor`.
 - Existing protocol support already includes disk, remote-disk server/client flows, SFTP, and MinIO, which suggests FTP should be added by aligning with the current driver and sync patterns rather than introducing a new execution model.
-- The desired change is intentionally narrow: treat FTP as a new client-side storage/sync option that can act as either source or destination.
-- The motivation is protocol completeness rather than a product pivot: FTP support should fit naturally beside SFTP and MinIO and avoid broad refactors.
+- FTP v1.0 shipped as a client-side storage/sync option that can act as either source or destination.
+- The FTP path fits beside SFTP and MinIO through the existing VFS, driver, sync, and monitor abstractions without a broad sync-engine refactor.
+- The next milestone has not been defined yet.
 
 ## Constraints
 
@@ -52,10 +53,11 @@ Add FTP as a first-class sync endpoint with the smallest correct change set, so 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Implement FTP as client-side sync support, not server-side FTP exposure | Matches the current need and keeps the change aligned with existing backend protocol integrations | — Pending |
-| Support FTP as both source and destination in v1 | Avoids shipping an incomplete protocol mode that breaks symmetry with existing storage backends | — Pending |
-| Start with plain FTP, not FTPS | Minimizes surface area and keeps the first phase focused on protocol integration | — Pending |
-| Reuse existing driver/sync architecture with minimal code changes | The repository already has clear extension points for remote backends such as SFTP and MinIO | — Pending |
+| Implement FTP as client-side sync support, not server-side FTP exposure | Matches the current need and keeps the change aligned with existing backend protocol integrations | Shipped in v1.0 |
+| Support FTP as both source and destination in v1 | Avoids shipping an incomplete protocol mode that breaks symmetry with existing storage backends | Shipped in v1.0 |
+| Start with plain FTP, not FTPS | Minimizes surface area and keeps the first phase focused on protocol integration | Shipped in v1.0; FTPS remains out of scope |
+| Reuse existing driver/sync architecture with minimal code changes | The repository already has clear extension points for remote backends such as SFTP and MinIO | Shipped in v1.0 |
+| Default FTP to passive mode and auto path encoding | Matches common FTP deployment behavior while keeping compatibility controls available | Added after v1.0 implementation as compatibility hardening |
 
 ## Evolution
 
@@ -75,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 after initialization*
+*Last updated: 2026-04-27 after v1.0 milestone completion*

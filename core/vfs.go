@@ -36,6 +36,8 @@ type FTPConfig struct {
 	Password string
 	// Timeout the connection timeout for FTP
 	Timeout string
+	// Encoding the path encoding for FTP, support auto, utf8, gbk
+	Encoding string
 	// PassiveMode use passive mode for FTP
 	PassiveMode bool
 }
@@ -50,6 +52,7 @@ const (
 	paramFTPUsername        = "ftp_user"
 	paramFTPPassword        = "ftp_pass"
 	paramFTPTimeout         = "ftp_timeout"
+	paramFTPEncoding        = "ftp_encoding"
 	paramFTPPassiveMode     = "ftp_passive"
 	paramSSHUsername        = "ssh_user"
 	paramSSHPassword        = "ssh_pass"
@@ -135,6 +138,18 @@ func (vfs *VFS) LocalSyncDisabled() bool {
 	return vfs.localSyncDisabled
 }
 
+// HasLocalPath reports whether a remote VFS explicitly configured a local path.
+func (vfs *VFS) HasLocalPath() bool {
+	if vfs.IsDisk() {
+		return !vfs.IsEmpty()
+	}
+	parseUrl, err := url.Parse(vfs.original)
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(parseUrl.Query().Get(paramPath)) != ""
+}
+
 // Secure use secure connection
 func (vfs *VFS) Secure() bool {
 	return vfs.secure
@@ -158,6 +173,11 @@ func (vfs *VFS) FTPPassword() string {
 // FTPTimeout returns the FTP timeout.
 func (vfs *VFS) FTPTimeout() string {
 	return vfs.ftpConf.Timeout
+}
+
+// FTPEncoding returns the FTP path encoding.
+func (vfs *VFS) FTPEncoding() string {
+	return vfs.ftpConf.Encoding
 }
 
 // FTPPassiveMode returns whether FTP passive mode is enabled.
@@ -269,8 +289,13 @@ func parse(path string, fsType VFSType) (scheme string, host string, port int, l
 	ftpConf.Username = strings.TrimSpace(parseUrl.Query().Get(paramFTPUsername))
 	ftpConf.Password = strings.TrimSpace(parseUrl.Query().Get(paramFTPPassword))
 	ftpConf.Timeout = strings.TrimSpace(parseUrl.Query().Get(paramFTPTimeout))
-	if strings.ToLower(strings.TrimSpace(parseUrl.Query().Get(paramFTPPassiveMode))) == valueTrue {
-		ftpConf.PassiveMode = true
+	ftpConf.Encoding = strings.TrimSpace(parseUrl.Query().Get(paramFTPEncoding))
+	if ftpConf.Encoding == "" {
+		ftpConf.Encoding = "auto"
+	}
+	ftpConf.PassiveMode = true
+	if strings.ToLower(strings.TrimSpace(parseUrl.Query().Get(paramFTPPassiveMode))) == "false" {
+		ftpConf.PassiveMode = false
 	}
 
 	// process ssh_config file

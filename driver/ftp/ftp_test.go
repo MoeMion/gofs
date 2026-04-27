@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	pathpkg "path"
 	"strings"
 	"testing"
 	"time"
@@ -215,6 +216,61 @@ func TestFTPDriverConnect(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "active mode") {
 			t.Fatalf("expect active mode error, but got => %v", err)
+		}
+	})
+}
+
+func TestFTPPathCodec(t *testing.T) {
+	t.Run("default config uses auto encoding", func(t *testing.T) {
+		codec, err := newFTPPathCodec(core.FTPConfig{})
+		if err != nil {
+			t.Fatalf("expect no error, but got => %v", err)
+		}
+		if codec.mode != ftpEncodingAuto {
+			t.Fatalf("expect mode %q, but got %q", ftpEncodingAuto, codec.mode)
+		}
+	})
+
+	t.Run("explicit gbk disables utf8 feature and round trips chinese path", func(t *testing.T) {
+		codec, err := newFTPPathCodec(core.FTPConfig{Encoding: "gbk"})
+		if err != nil {
+			t.Fatalf("expect no error, but got => %v", err)
+		}
+		if !codec.disableUTF8Feature() {
+			t.Fatal("expect gbk mode to disable utf8 feature")
+		}
+		encoded, err := codec.encodePath("/中文/目录.txt")
+		if err != nil {
+			t.Fatalf("expect no encode error, but got => %v", err)
+		}
+		decoded := codec.decodePath(encoded)
+		if decoded != pathpkg.Clean("/中文/目录.txt") {
+			t.Fatalf("expect decoded path %q, but got %q", pathpkg.Clean("/中文/目录.txt"), decoded)
+		}
+	})
+
+	t.Run("auto mode decodes gbk bytes and leaves utf8 untouched", func(t *testing.T) {
+		codec, err := newFTPPathCodec(core.FTPConfig{Encoding: "auto"})
+		if err != nil {
+			t.Fatalf("expect no error, but got => %v", err)
+		}
+		encoded, err := (&ftpPathCodec{mode: ftpEncodingGBK}).encodePath("中文")
+		if err != nil {
+			t.Fatalf("expect no encode error, but got => %v", err)
+		}
+		decoded := codec.decodeName(encoded)
+		if decoded != "中文" {
+			t.Fatalf("expect decoded name %q, but got %q", "中文", decoded)
+		}
+		if codec.decodeName("utf8-name") != "utf8-name" {
+			t.Fatal("expect utf8 name to remain unchanged in auto mode")
+		}
+	})
+
+	t.Run("invalid explicit encoding returns error", func(t *testing.T) {
+		_, err := newFTPPathCodec(core.FTPConfig{Encoding: "shift-jis"})
+		if err == nil {
+			t.Fatal("expect invalid encoding error, but got nil")
 		}
 	})
 }

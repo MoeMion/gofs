@@ -38,7 +38,7 @@ func (s *driverPushClientSync) start(isSync bool) error {
 }
 
 func (s *driverPushClientSync) Create(path string) error {
-	if !s.dest.LocalSyncDisabled() {
+	if s.localSyncEnabled() {
 		if err := s.diskSync.Create(path); err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (s *driverPushClientSync) Create(path string) error {
 }
 
 func (s *driverPushClientSync) Symlink(oldname, newname string) error {
-	if !s.dest.LocalSyncDisabled() {
+	if s.localSyncEnabled() {
 		if err := s.diskSync.Symlink(oldname, newname); err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (s *driverPushClientSync) Symlink(oldname, newname string) error {
 }
 
 func (s *driverPushClientSync) Write(path string) error {
-	if !s.dest.LocalSyncDisabled() {
+	if s.localSyncEnabled() {
 		if err := s.diskSync.Write(path); err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func (s *driverPushClientSync) Write(path string) error {
 }
 
 func (s *driverPushClientSync) Remove(path string) error {
-	if !s.dest.LocalSyncDisabled() {
+	if s.localSyncEnabled() {
 		if err := s.diskSync.Remove(path); err != nil {
 			return err
 		}
@@ -195,6 +195,10 @@ func (s *driverPushClientSync) buildDestAbsFile(sourceFileAbs string) (string, e
 	}
 
 	return filepath.ToSlash(filepath.Join(s.basePath, sourceFileRel)), nil
+}
+
+func (s *driverPushClientSync) localSyncEnabled() bool {
+	return !s.dest.LocalSyncDisabled() && s.dest.HasLocalPath()
 }
 
 func (s *driverPushClientSync) fileInfoCompare(sourcePath string) (equal bool) {

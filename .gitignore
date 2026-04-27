@@ -28,3 +28,7 @@ bin/
 scripts/ftp/.vendor/
 scripts/ftp/ftp-server.log
 scripts/ftp/ftp-server.pid
+encrypt/testdata
+source/
+logs/
+AGENTS.md

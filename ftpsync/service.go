@@ -1,12 +1,27 @@
 package ftpsync
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var errInvalidOptions = errors.New("invalid ftpsync options")
 
 // FTPSyncService is the public FTP synchronization service boundary.
 type FTPSyncService struct {
 	opts Options
+}
+
+// Result is the public summary contract returned by one-shot sync calls.
+type Result struct {
+	Direction Direction
+}
+
+// Handle is the public lifecycle contract returned by background sync calls.
+type Handle interface {
+	Done() <-chan struct{}
+	Err() error
+	Stop(context.Context) error
 }
 
 // NewFTPSyncService validates and stores a private copy of typed options.
@@ -25,6 +40,28 @@ func (s *FTPSyncService) Validate() error {
 		return newError(ErrValidation, "service is nil", errInvalidOptions)
 	}
 	return validateOptions(s.opts)
+}
+
+// SyncOnce validates options and context before dispatching a one-shot sync.
+func (s *FTPSyncService) SyncOnce(ctx context.Context) (Result, error) {
+	if err := s.Validate(); err != nil {
+		return Result{}, err
+	}
+	if err := validateContext(ctx, "SyncOnce"); err != nil {
+		return Result{}, err
+	}
+	return Result{}, unsupportedMethod("SyncOnce", s.opts.Direction)
+}
+
+// StartBackground validates options and context before starting background sync.
+func (s *FTPSyncService) StartBackground(ctx context.Context) (Handle, error) {
+	if err := s.Validate(); err != nil {
+		return nil, err
+	}
+	if err := validateContext(ctx, "StartBackground"); err != nil {
+		return nil, err
+	}
+	return nil, unsupportedMethod("StartBackground", s.opts.Direction)
 }
 
 func validateOptions(opts Options) error {
@@ -84,6 +121,20 @@ func validateFTPFields(name string, ftp FTPOptions) error {
 
 func unsupportedDirection(direction Direction) error {
 	return newError(ErrUnsupportedCapability, "unsupported endpoint combination for "+string(direction), errInvalidOptions)
+}
+
+func unsupportedMethod(method string, direction Direction) error {
+	return newError(ErrUnsupportedCapability, method+" is unsupported for "+string(direction), nil)
+}
+
+func validateContext(ctx context.Context, method string) error {
+	if ctx == nil {
+		return newError(ErrValidation, method+" context is required", errInvalidOptions)
+	}
+	if err := ctx.Err(); err != nil {
+		return newError(ErrCanceled, method+" context canceled", err)
+	}
+	return nil
 }
 
 func isLocalEndpoint(endpoint Endpoint) bool {

@@ -62,6 +62,11 @@ func TestHookContractsZeroValueNormalizes(t *testing.T) {
 }
 
 func TestHookDefaultsAreNoOp(t *testing.T) {
+	var zero FTPSyncService
+	zero.log("zero service log")
+	zero.reportProgress(Progress{Path: "zero.txt"})
+	zero.reportEvent(SyncEvent{Operation: "noop", Path: "zero.txt", Status: "ignored"})
+
 	svc, err := NewFTPSyncService(completeLocalToFTPHookOptions())
 	if err != nil {
 		t.Fatalf("construct service: %v", err)

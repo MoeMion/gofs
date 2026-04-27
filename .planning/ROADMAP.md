@@ -70,8 +70,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Add one-shot result/partial-failure scaffolding and the typed-options adapter into the legacy FTP sync engine.
-- [ ] 06-02-PLAN.md — Implement local→FTP one-shot execution through FTPSyncService while preserving FTP v1 push semantics.
+- [x] 06-01-PLAN.md — Add one-shot result/partial-failure scaffolding and the typed-options adapter into the legacy FTP sync engine.
+- [x] 06-02-PLAN.md — Implement local→FTP one-shot execution through FTPSyncService while preserving FTP v1 push semantics.
 - [ ] 06-03-PLAN.md — Implement FTP→local one-shot execution with explicit destination-root and cwd-safety regression coverage.
 
 ### Phase 7: Background Disk→FTP Lifecycle
@@ -121,7 +121,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 3. One-Way FTP Sync Flows | v1.0 | - | Complete | 2026-04-27 |
 | 4. FTP Verification & Discoverability | v1.0 | - | Complete | 2026-04-27 |
 | 5. Public FTPSyncService API Contract | v2.0 | 3/3 | Complete | 2026-04-27 |
-| 6. One-Shot Disk↔FTP Sync Through Library API | v2.0 | 0/TBD | Not started | - |
+| 6. One-Shot Disk↔FTP Sync Through Library API | v2.0 | 2/3 | In Progress | - |
 | 7. Background Disk→FTP Lifecycle | v2.0 | 0/TBD | Not started | - |
 | 8. FTP-Only Package Reduction | v2.0 | 0/TBD | Not started | - |
 | 9. Verification, Examples, and Migration Docs | v2.0 | 0/TBD | Not started | - |

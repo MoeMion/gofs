@@ -18,11 +18,11 @@ Requirements for converting the existing FTP synchronization capability into a f
 
 ### One-Shot Sync
 
-- [ ] **ONCE-01**: Developer can run one-shot local disk→FTP synchronization through `FTPSyncService`
+- [x] **ONCE-01**: Developer can run one-shot local disk→FTP synchronization through `FTPSyncService`
 - [ ] **ONCE-02**: Developer can run one-shot FTP→local disk synchronization through `FTPSyncService`
-- [ ] **ONCE-03**: One-shot sync preserves existing FTP v1 behavior for create, update, delete, rename, nested paths, passive mode, timeout, and path encoding
+- [x] **ONCE-03**: One-shot sync preserves existing FTP v1 behavior for create, update, delete, rename, nested paths, passive mode, timeout, and path encoding
 - [ ] **ONCE-04**: One-shot sync never writes files to the process working directory unless that directory is explicitly configured as the local endpoint
-- [ ] **ONCE-05**: One-shot sync returns a useful result summary suitable for library callers instead of relying on CLI output
+- [x] **ONCE-05**: One-shot sync returns a useful result summary suitable for library callers instead of relying on CLI output
 
 ### Background Disk to FTP Sync
 
@@ -86,11 +86,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-03 | Phase 5 | Complete |
 | API-04 | Phase 5 | Complete |
 | API-05 | Phase 5 | Complete |
-| ONCE-01 | Phase 6 | Pending |
+| ONCE-01 | Phase 6 | Complete |
 | ONCE-02 | Phase 6 | Pending |
-| ONCE-03 | Phase 6 | Pending |
+| ONCE-03 | Phase 6 | Complete |
 | ONCE-04 | Phase 6 | Pending |
-| ONCE-05 | Phase 6 | Pending |
+| ONCE-05 | Phase 6 | Complete |
 | WATCH-01 | Phase 7 | Pending |
 | WATCH-02 | Phase 7 | Pending |
 | WATCH-03 | Phase 7 | Pending |

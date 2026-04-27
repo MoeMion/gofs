@@ -84,7 +84,12 @@ Plans:
   3. Developer receives a lifecycle handle that exposes readiness, error observation, wait, and deterministic shutdown behavior.
   4. Cancelling the context or stopping the handle closes watchers, timers, retry sleeps, goroutines, and FTP connections.
   5. Developer cannot start FTP→disk polling or bidirectional background conflict resolution through the v2.0 public API.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Add the public StartBackground local→FTP lifecycle entrypoint, stronger handle contract, and initial catch-up startup behavior.
+- [ ] 07-02-PLAN.md — Add recursive fsnotify watching, event debounce/coalescing, and non-terminal steady-state sync error handling.
+- [ ] 07-03-PLAN.md — Finalize deterministic stop/cancel cleanup, final wait/error semantics, and shutdown regression coverage.
 
 ### Phase 8: FTP-Only Package Reduction
 **Goal**: Library consumers see a small FTP-only package surface whose build graph excludes old CLI/server/protocol runtimes while retaining the internal helpers needed for disk↔FTP sync.
@@ -122,6 +127,6 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 4. FTP Verification & Discoverability | v1.0 | - | Complete | 2026-04-27 |
 | 5. Public FTPSyncService API Contract | v2.0 | 3/3 | Complete | 2026-04-27 |
 | 6. One-Shot Disk↔FTP Sync Through Library API | v2.0 | 3/3 | Complete | 2026-04-27 |
-| 7. Background Disk→FTP Lifecycle | v2.0 | 0/TBD | Not started | - |
+| 7. Background Disk→FTP Lifecycle | v2.0 | 0/3 | Planned | - |
 | 8. FTP-Only Package Reduction | v2.0 | 0/TBD | Not started | - |
 | 9. Verification, Examples, and Migration Docs | v2.0 | 0/TBD | Not started | - |

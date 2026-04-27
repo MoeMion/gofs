@@ -88,7 +88,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Add the public StartBackground local→FTP lifecycle entrypoint, stronger handle contract, and initial catch-up startup behavior.
-- [ ] 07-02-PLAN.md — Add recursive fsnotify watching, event debounce/coalescing, and non-terminal steady-state sync error handling.
+- [x] 07-02-PLAN.md — Add recursive fsnotify watching, event debounce/coalescing, and non-terminal steady-state sync error handling.
 - [ ] 07-03-PLAN.md — Finalize deterministic stop/cancel cleanup, final wait/error semantics, and shutdown regression coverage.
 
 ### Phase 8: FTP-Only Package Reduction

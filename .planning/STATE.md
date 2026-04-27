@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-04-27T08:47:18.286Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-04-27T08:54:57.202Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 ## Current Position
 
 Phase: 07 (background-disk-ftp-lifecycle) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-27
 
@@ -65,6 +65,7 @@ Progress: [████░░░░░░] 40%
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P02 | 8min | 2 tasks | 4 files |
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P03 | 18min | 2 tasks | 4 files |
 | Phase 07-background-disk-ftp-lifecycle P01 | 4min | 2 tasks | 5 files |
+| Phase 07-background-disk-ftp-lifecycle P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 07-background-disk-ftp-lifecycle]: Kept StartBackground available only for DirectionLocalToFTP and preserved ErrUnsupportedCapability method/direction context for FTP→local background attempts.
 - [Phase 07-background-disk-ftp-lifecycle]: Added Wait() to the public Handle interface so embedders have explicit wait-for-exit semantics instead of polling Done/Err manually.
 - [Phase 07-background-disk-ftp-lifecycle]: Implemented initial background startup as a dedicated catch-up step that reuses executeSyncOnce and records failures on the handle before readiness.
+- [Phase 07-background-disk-ftp-lifecycle]: Background change handling remains a coalesced full-resync model rather than per-event FTP mutation logic.
+- [Phase 07-background-disk-ftp-lifecycle]: Latest background sync errors remain observable through Handle.Err() but do not close Done() unless shutdown/cancellation occurs.
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T08:47:18.255Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-04-27T08:54:57.179Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

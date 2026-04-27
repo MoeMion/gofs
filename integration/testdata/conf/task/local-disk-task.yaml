@@ -1,7 +1,0 @@
-tasks:
-  - name: local-disk-task
-    conf: ../run-gofs-local-disk.yaml
-    labels:
-      - local-disk-client
-    allow_ip:
-      - 127.0.0.1

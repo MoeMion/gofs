@@ -1,3 +1,0 @@
-source: ./source
-dest: ./dest
-sync_once: true

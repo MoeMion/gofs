@@ -33,7 +33,7 @@ See archived milestone artifacts:
 
 **Milestone Goal:** Provide a focused Go package for reliable FTP file synchronization without requiring the existing CLI/server runtime.
 
-- [ ] **Phase 5: Public FTPSyncService API Contract** - Developers can import `ftpsync`, configure `FTPSyncService` with typed Go options, and receive explicit validation/errors without invoking old runtime code.
+- [x] **Phase 5: Public FTPSyncService API Contract** - Developers can import `ftpsync`, configure `FTPSyncService` with typed Go options, and receive explicit validation/errors without invoking old runtime code. (completed 2026-04-27)
 - [ ] **Phase 6: One-Shot Disk↔FTP Sync Through Library API** - Developers can run one-shot local→FTP and FTP→local sync through `FTPSyncService` while preserving v1 FTP behavior and cwd safety.
 - [ ] **Phase 7: Background Disk→FTP Lifecycle** - Developers can start, observe, and stop persistent local disk→FTP sync with deterministic cleanup and no FTP→disk polling API.
 - [ ] **Phase 8: FTP-Only Package Reduction** - The library build exposes only FTP sync capabilities and drops or isolates unrelated CLI/server/protocol dependencies.
@@ -115,7 +115,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 2. FTP Driver Backend | v1.0 | - | Complete | 2026-04-27 |
 | 3. One-Way FTP Sync Flows | v1.0 | - | Complete | 2026-04-27 |
 | 4. FTP Verification & Discoverability | v1.0 | - | Complete | 2026-04-27 |
-| 5. Public FTPSyncService API Contract | v2.0 | 0/TBD | Not started | - |
+| 5. Public FTPSyncService API Contract | v2.0 | 3/3 | Complete | 2026-04-27 |
 | 6. One-Shot Disk↔FTP Sync Through Library API | v2.0 | 0/TBD | Not started | - |
 | 7. Background Disk→FTP Lifecycle | v2.0 | 0/TBD | Not started | - |
 | 8. FTP-Only Package Reduction | v2.0 | 0/TBD | Not started | - |

@@ -22,11 +22,11 @@ Provide a focused Go package for reliable FTP file synchronization without requi
 - ✓ FTP connection setup supports host, port, username, password, passive mode, timeout, and path encoding controls — v1.0
 - ✓ FTP disk<->endpoint flows are covered by automated unit and real-server integration tests — v1.0
 - ✓ FTP usage is discoverable in CLI/configuration documentation — v1.0
+- ✓ FTP sync can be invoked through a Go `FTPSyncService` instead of the CLI — Phase 5
+- ✓ `FTPSyncService` accepts typed Go options for endpoint, retry, ignore, and hook configuration — Phase 5
 
 ### Active
 
-- [ ] FTP sync can be invoked through a Go `FTPSyncService` instead of the CLI
-- [ ] `FTPSyncService` accepts parameters equivalent to the current CLI configuration semantics
 - [ ] Library consumers can run one-shot FTP sync flows
 - [ ] Library consumers can run background persistent disk→FTP monitoring/sync flows
 - [ ] Non-FTP protocols and non-library runtime surfaces are removed or isolated from the package API
@@ -64,8 +64,10 @@ Provide a focused Go package for reliable FTP file synchronization without requi
 | Start with plain FTP, not FTPS | Minimizes surface area and keeps the first phase focused on protocol integration | Shipped in v1.0; FTPS remains out of scope |
 | Reuse existing driver/sync architecture with minimal code changes | The repository already has clear extension points for remote backends such as SFTP and MinIO | Shipped in v1.0 |
 | Default FTP to passive mode and auto path encoding | Matches common FTP deployment behavior while keeping compatibility controls available | Added after v1.0 implementation as compatibility hardening |
-| Shift v2.0 to a Go FTP sync library | The desired consumer path is package invocation through `FTPSyncService`, not CLI operation | Pending |
+| Shift v2.0 to a Go FTP sync library | The desired consumer path is package invocation through `FTPSyncService`, not CLI operation | In progress; API boundary established in Phase 5 |
 | Aggressively remove non-FTP runtime surfaces in v2.0 | Reduces package size and API complexity for the library use case | Pending |
+| Use typed Go options only in the public API | Keeps library consumers off legacy CLI/YAML parser semantics and makes validation explicit | Established in Phase 5 |
+| Restrict background sync in v2.0 to disk→FTP only | Matches the approved scope and keeps FTP→disk polling out of the public lifecycle API | Established in Phase 5 |
 
 ## Current Milestone: v2.0 FTP Sync Library
 
@@ -96,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 after v2.0 milestone start*
+*Last updated: 2026-04-27 after Phase 5 completion*

@@ -182,19 +182,23 @@ func (s *FTPSyncService) log(message string) {
 	if s == nil {
 		return
 	}
-	s.hooks.Logger.Log(message)
+	s.normalizedHooks().Logger.Log(message)
 }
 
 func (s *FTPSyncService) reportProgress(progress Progress) {
 	if s == nil {
 		return
 	}
-	s.hooks.Progress(progress)
+	s.normalizedHooks().Progress(progress)
 }
 
 func (s *FTPSyncService) reportEvent(event SyncEvent) {
 	if s == nil {
 		return
 	}
-	s.hooks.Event(event)
+	s.normalizedHooks().Event(event)
+}
+
+func (s *FTPSyncService) normalizedHooks() HookSet {
+	return normalizeHooks(s.hooks)
 }

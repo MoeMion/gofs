@@ -29,7 +29,7 @@ Requirements for converting the existing FTP synchronization capability into a f
 - [x] **WATCH-01**: Developer can start persistent local disk→FTP synchronization through `FTPSyncService` without invoking the CLI monitor runtime
 - [x] **WATCH-02**: Background disk→FTP sync detects local file create, update, delete, and rename-relevant changes and applies them to the FTP destination
 - [x] **WATCH-03**: Background sync returns a lifecycle handle that supports readiness, error observation, wait, and deterministic shutdown
-- [ ] **WATCH-04**: Background sync stops all watchers, timers, retry sleeps, goroutines, and FTP connections when its context is cancelled or the handle is stopped
+- [x] **WATCH-04**: Background sync stops all watchers, timers, retry sleeps, goroutines, and FTP connections when its context is cancelled or the handle is stopped
 - [x] **WATCH-05**: Background sync does not expose FTP→disk polling or bidirectional conflict resolution in v2.0
 
 ### Package Reduction
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WATCH-01 | Phase 7 | Complete |
 | WATCH-02 | Phase 7 | Complete |
 | WATCH-03 | Phase 7 | Complete |
-| WATCH-04 | Phase 7 | Pending |
+| WATCH-04 | Phase 7 | Complete |
 | WATCH-05 | Phase 7 | Complete |
 | PRUNE-01 | Phase 8 | Pending |
 | PRUNE-02 | Phase 8 | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
-status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-04-27T08:54:57.202Z"
+status: verifying
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-04-27T09:00:42.139Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 Phase: 07 (background-disk-ftp-lifecycle) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-27
 
 Progress: [████░░░░░░] 40%
@@ -66,6 +66,7 @@ Progress: [████░░░░░░] 40%
 | Phase 06-one-shot-disk-ftp-sync-through-library-api P03 | 18min | 2 tasks | 4 files |
 | Phase 07-background-disk-ftp-lifecycle P01 | 4min | 2 tasks | 5 files |
 | Phase 07-background-disk-ftp-lifecycle P02 | 5min | 2 tasks | 2 files |
+| Phase 07-background-disk-ftp-lifecycle P03 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 07-background-disk-ftp-lifecycle]: Implemented initial background startup as a dedicated catch-up step that reuses executeSyncOnce and records failures on the handle before readiness.
 - [Phase 07-background-disk-ftp-lifecycle]: Background change handling remains a coalesced full-resync model rather than per-event FTP mutation logic.
 - [Phase 07-background-disk-ftp-lifecycle]: Latest background sync errors remain observable through Handle.Err() but do not close Done() unless shutdown/cancellation occurs.
+- [Phase 07-background-disk-ftp-lifecycle]: Background Stop now waits for the active sync worker before closing Done, so embedders can trust Wait as a full lifecycle barrier.
+- [Phase 07-background-disk-ftp-lifecycle]: Handle.Err remains the latest runtime health signal while Handle.Wait returns only the terminal lifecycle result after Done closes.
+- [Phase 07-background-disk-ftp-lifecycle]: Background sync policy remains local-to-FTP only; FTP-to-local background attempts continue to return ErrUnsupportedCapability.
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T08:54:57.179Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-04-27T09:00:42.116Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None

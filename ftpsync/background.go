@@ -104,6 +104,8 @@ func (h *backgroundHandle) run(ctx context.Context, svc *FTPSyncService) {
 
 func (h *backgroundHandle) runInitialSync(ctx context.Context, svc *FTPSyncService) {
 	if _, err := executeSyncOnce(ctx, svc); err != nil {
+		svc.log("StartBackground initial sync failed: " + err.Error())
+		svc.reportEvent(SyncEvent{Operation: "background_sync", Path: svc.opts.Source.LocalPath, Status: "failed", ErrorKind: backgroundErrorKind(err)})
 		h.setCurrent(err)
 	}
 }
@@ -168,10 +170,21 @@ func (h *backgroundHandle) runSyncTriggers(ctx context.Context, svc *FTPSyncServ
 				return
 			}
 			if _, err := executeSyncOnce(ctx, svc); err != nil {
+				svc.log("StartBackground sync pass failed: " + err.Error())
+				svc.reportEvent(SyncEvent{Operation: "background_sync", Path: svc.opts.Source.LocalPath, Status: "failed", ErrorKind: backgroundErrorKind(err)})
 				h.setCurrent(err)
 			}
 		}
 	}
+}
+
+func backgroundErrorKind(err error) ErrorKind {
+	for _, kind := range []ErrorKind{ErrAuthentication, ErrConnection, ErrTransfer, ErrCanceled, ErrValidation, ErrUnsupportedCapability} {
+		if IsKind(err, kind) {
+			return kind
+		}
+	}
+	return ErrTransfer
 }
 
 func (h *backgroundHandle) watchTree(watcher *fsnotify.Watcher, root string) error {

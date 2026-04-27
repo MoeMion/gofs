@@ -160,6 +160,7 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syn
 		result.PathsVisited++
 		opName := "create"
 		var opErr error
+		var bytesTotal int64
 
 		isSymlink := false
 		if fileType := d.Type(); fileType&os.ModeSymlink != 0 {
@@ -181,6 +182,9 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syn
 			}
 		default:
 			result.FilesAttempted++
+			if info, infoErr := d.Info(); infoErr == nil {
+				bytesTotal = info.Size()
+			}
 			if opErr = syncer.Create(currentPath); opErr == nil {
 				opName = "write"
 				opErr = syncer.Write(currentPath)
@@ -199,6 +203,8 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, adapter syn
 		svc.reportEvent(SyncEvent{Operation: opName, Path: currentPath, Status: "complete"})
 		svc.reportProgress(Progress{
 			Path:             currentPath,
+			BytesTransferred: bytesTotal,
+			BytesTotal:       bytesTotal,
 			FilesTransferred: int64(result.FilesAttempted - result.FailureCount),
 			FilesTotal:       int64(result.FilesAttempted),
 		})

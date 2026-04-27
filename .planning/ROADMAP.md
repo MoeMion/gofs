@@ -70,7 +70,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [x] 06-01-PLAN.md — Add one-shot result/partial-failure scaffolding and the typed-options adapter into the legacy FTP sync engine.
+- [ ] 06-01-PLAN.md — Add one-shot result/partial-failure scaffolding and the typed-options adapter into the legacy FTP sync engine.
 - [ ] 06-02-PLAN.md — Implement local→FTP one-shot execution through FTPSyncService while preserving FTP v1 push semantics.
 - [ ] 06-03-PLAN.md — Implement FTP→local one-shot execution with explicit destination-root and cwd-safety regression coverage.
 

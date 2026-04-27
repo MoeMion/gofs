@@ -3,6 +3,7 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 
 	"github.com/no-src/gofs/core"
 )
@@ -40,6 +41,12 @@ type Sync interface {
 	Dest() core.VFS
 	// Close release the resource that is used by the sync component
 	Close()
+}
+
+// SourceWalker exposes source-tree walking for legacy sync implementations.
+type SourceWalker interface {
+	WalkSourceDir(root string, fn fs.WalkDirFunc) error
+	ReadSourceLink(path string) (string, error)
 }
 
 // NewSync auto create an instance of the expected sync according to source and dest

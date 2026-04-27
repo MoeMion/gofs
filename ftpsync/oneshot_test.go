@@ -3,8 +3,10 @@ package ftpsync
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -357,6 +359,192 @@ func TestSyncOnceLocalToFTPPartialFailure(t *testing.T) {
 	}
 }
 
+func TestSyncOnceFTPToLocalAutoCreateRoot(t *testing.T) {
+	defer withSyncBuilder(buildLegacySync)()
+	destinationRoot := filepath.Join(t.TempDir(), "created-root")
+
+	var captured *recordingLegacySync
+	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
+		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
+		return captured, nil
+	}
+
+	remoteRoot := "/outgoing"
+	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
+	runFTPToLocalSyncOnceWalk := withSyncOnceExecutor(func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		return runSyncOnceScaffold(ctx, svc, syncOnceAdapter{option: adapter.option}, result)
+	})
+	defer runFTPToLocalSyncOnceWalk()
+
+	previousBuilder := buildLegacySync
+	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
+		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
+		return &walkingLegacySync{
+			recordingLegacySync: captured,
+			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
+		}, nil
+	}
+	defer func() { buildLegacySync = previousBuilder }()
+
+	opts := completeFTPToLocalOptionsForOneShot()
+	opts.Destination.LocalPath = destinationRoot
+	svc, err := NewFTPSyncService(opts)
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	result, err := svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if _, err := os.Stat(destinationRoot); err != nil {
+		t.Fatalf("expected destination root to be auto-created: %v", err)
+	}
+	if captured == nil {
+		t.Fatalf("expected legacy sync to be constructed")
+	}
+	if !containsString(captured.creates, remoteRoot) || !containsString(captured.creates, path.Join(remoteRoot, "nested")) {
+		t.Fatalf("expected directory create operations for remote tree, got %#v", captured.creates)
+	}
+	if !containsString(captured.writes, remoteFile) {
+		t.Fatalf("expected file write operation for remote file, got %#v", captured.writes)
+	}
+	if result.PathsVisited != 3 || result.FilesAttempted != 1 || result.DirectoriesAttempted != 2 {
+		t.Fatalf("expected compact FTP→local summary counts, got %#v", result)
+	}
+	if result.Partial || result.FailureCount != 0 {
+		t.Fatalf("expected successful FTP→local run, got %#v", result)
+	}
+	if !captured.closed {
+		t.Fatalf("expected legacy sync to be closed")
+	}
+}
+
+func TestSyncOnceFTPToLocalSuccess(t *testing.T) {
+	defer withSyncBuilder(buildLegacySync)()
+	destinationRoot := t.TempDir()
+	remoteRoot := "/outgoing"
+	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
+
+	var captured *recordingLegacySync
+	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
+		captured = &recordingLegacySync{source: opt.Source, dest: opt.Dest}
+		return &walkingLegacySync{
+			recordingLegacySync: captured,
+			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
+		}, nil
+	}
+
+	svc, err := NewFTPSyncService(func() Options {
+		opts := completeFTPToLocalOptionsForOneShot()
+		opts.Destination.LocalPath = destinationRoot
+		return opts
+	}())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	result, err := svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if captured == nil {
+		t.Fatalf("expected legacy sync to be constructed")
+	}
+	if !containsString(captured.writes, remoteFile) {
+		t.Fatalf("expected write for remote file, got %#v", captured.writes)
+	}
+	if result.Direction != DirectionFTPToLocal || result.DestinationRoot != destinationRoot {
+		t.Fatalf("expected FTP→local result roots, got %#v", result)
+	}
+}
+
+func TestSyncOnceFTPToLocalNeverWritesToCWD(t *testing.T) {
+	defer withSyncBuilder(buildLegacySync)()
+	workDir := t.TempDir()
+	destinationRoot := filepath.Join(t.TempDir(), "dest-root")
+	remoteRoot := "/outgoing"
+	remoteFile := path.Join(remoteRoot, "nested", "child.txt")
+
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(workDir); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Errorf("restore cwd: %v", err)
+		}
+	})
+
+	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
+		return &walkingLegacySync{
+			recordingLegacySync: &recordingLegacySync{source: opt.Source, dest: opt.Dest},
+			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: remoteFile, isDir: false}},
+		}, nil
+	}
+
+	svc, err := NewFTPSyncService(func() Options {
+		opts := completeFTPToLocalOptionsForOneShot()
+		opts.Destination.LocalPath = destinationRoot
+		return opts
+	}())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	_, err = svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(workDir, "nested", "child.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected no synced file in cwd, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(destinationRoot, "nested", "child.txt")); err != nil {
+		t.Fatalf("expected synced file under configured destination root: %v", err)
+	}
+}
+
+func TestSyncOnceFTPToLocalPartialFailure(t *testing.T) {
+	defer withSyncBuilder(buildLegacySync)()
+	destinationRoot := t.TempDir()
+	remoteRoot := "/outgoing"
+	failingFile := path.Join(remoteRoot, "nested", "fail.txt")
+	afterFile := path.Join(remoteRoot, "after.txt")
+
+	buildLegacySync = func(opt legacysync.Option) (legacysync.Sync, error) {
+		return &walkingLegacySync{
+			recordingLegacySync: &recordingLegacySync{source: opt.Source, dest: opt.Dest, failWritePath: failingFile},
+			walk:                []walkEntry{{path: remoteRoot, isDir: true}, {path: path.Join(remoteRoot, "nested"), isDir: true}, {path: failingFile, isDir: false}, {path: afterFile, isDir: false}},
+		}, nil
+	}
+
+	svc, err := NewFTPSyncService(func() Options {
+		opts := completeFTPToLocalOptionsForOneShot()
+		opts.Destination.LocalPath = destinationRoot
+		return opts
+	}())
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	result, err := svc.SyncOnce(context.Background())
+	if err == nil {
+		t.Fatalf("expected partial failure error")
+	}
+	if !IsKind(err, ErrTransfer) {
+		t.Fatalf("expected transfer error kind, got %v", err)
+	}
+	if !result.Partial || result.FailureCount == 0 || result.PathsVisited < 3 || result.FilesAttempted < 1 || result.DirectoriesAttempted < 2 {
+		t.Fatalf("expected partial FTP→local summary counts, got %#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(destinationRoot, "after.txt")); err != nil {
+		t.Fatalf("expected later file to still be written after failure: %v", err)
+	}
+}
+
 func assertFTPVFS(t *testing.T, vfs core.VFS, expected FTPOptions) {
 	t.Helper()
 	if vfs.Host() != expected.Host || vfs.Port() != expected.Port {
@@ -473,6 +661,16 @@ type recordedSymlink struct {
 	newname string
 }
 
+type walkingLegacySync struct {
+	*recordingLegacySync
+	walk []walkEntry
+}
+
+type walkEntry struct {
+	path  string
+	isDir bool
+}
+
 func (r *recordingLegacySync) Create(path string) error {
 	r.creates = append(r.creates, path)
 	return nil
@@ -500,6 +698,85 @@ func (r *recordingLegacySync) Source() core.VFS                { return r.source
 func (r *recordingLegacySync) Dest() core.VFS                  { return r.dest }
 func (r *recordingLegacySync) Close()                          { r.closed = true }
 
+func (r *recordingLegacySync) WalkSourceDir(root string, fn fs.WalkDirFunc) error {
+	return nil
+}
+
+func (r *recordingLegacySync) ReadSourceLink(path string) (string, error) {
+	return "", nil
+}
+
+func (w *walkingLegacySync) Create(path string) error {
+	if err := w.recordingLegacySync.Create(path); err != nil {
+		return err
+	}
+	isDir, _ := w.IsDir(path)
+	return w.materialize(path, isDir)
+}
+
+func (w *walkingLegacySync) Write(path string) error {
+	if err := w.recordingLegacySync.Write(path); err != nil {
+		return err
+	}
+	return w.materialize(path, false)
+}
+
+func (w *walkingLegacySync) IsDir(path string) (bool, error) {
+	for _, entry := range w.walk {
+		if entry.path == path {
+			return entry.isDir, nil
+		}
+	}
+	return false, nil
+}
+
+func (w *walkingLegacySync) SyncOnce(root string) error {
+	for _, entry := range w.walk {
+		if entry.isDir {
+			if err := w.Create(entry.path); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := w.Create(entry.path); err != nil {
+			return err
+		}
+		if err := w.Write(entry.path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *walkingLegacySync) WalkSourceDir(root string, fn fs.WalkDirFunc) error {
+	for _, entry := range w.walk {
+		if err := fn(entry.path, stubDirEntry{entry: entry}, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *walkingLegacySync) ReadSourceLink(path string) (string, error) {
+	return "", nil
+}
+
+func (w *walkingLegacySync) materialize(remotePath string, isDir bool) error {
+	if w == nil || w.dest.IsEmpty() {
+		return nil
+	}
+	relative := strings.TrimPrefix(path.Clean(remotePath), path.Clean(w.source.RemotePath().Base()))
+	relative = strings.TrimPrefix(relative, "/")
+	target := filepath.Join(w.dest.Path().Base(), filepath.FromSlash(relative))
+	if isDir {
+		return os.MkdirAll(target, 0o755)
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(target, []byte("synced"), 0o644)
+}
+
 func containsString(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
@@ -517,3 +794,37 @@ func hasFailedEvent(events []SyncEvent, target string) bool {
 	}
 	return false
 }
+
+type stubDirEntry struct {
+	entry walkEntry
+}
+
+func (s stubDirEntry) Name() string {
+	return path.Base(s.entry.path)
+}
+
+func (s stubDirEntry) IsDir() bool {
+	return s.entry.isDir
+}
+
+func (s stubDirEntry) Type() fs.FileMode {
+	if s.entry.isDir {
+		return fs.ModeDir
+	}
+	return 0
+}
+
+func (s stubDirEntry) Info() (fs.FileInfo, error) {
+	return stubFileInfo{entry: s.entry}, nil
+}
+
+type stubFileInfo struct {
+	entry walkEntry
+}
+
+func (s stubFileInfo) Name() string       { return path.Base(s.entry.path) }
+func (s stubFileInfo) Size() int64        { return 0 }
+func (s stubFileInfo) Mode() fs.FileMode  { return stubDirEntry{entry: s.entry}.Type() }
+func (s stubFileInfo) ModTime() time.Time { return time.Time{} }
+func (s stubFileInfo) IsDir() bool        { return s.entry.isDir }
+func (s stubFileInfo) Sys() any           { return nil }

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"io/fs"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/no-src/gofs/driver"
@@ -162,4 +164,29 @@ func (s *driverPullClientSync) SyncOnce(path string) error {
 		}
 		return s.syncWalk(currentPath, d, s, s.driver.ReadLink)
 	})
+}
+
+func (s *driverPullClientSync) WalkSourceDir(root string, fn fs.WalkDirFunc) error {
+	return s.driver.WalkDir(root, fn)
+}
+
+func (s *driverPullClientSync) ReadSourceLink(path string) (string, error) {
+	return s.driver.ReadLink(path)
+}
+
+func BuildPullDestinationPath(root string, sourceRoot string, remotePath string) (string, error) {
+	cleanRoot := filepath.Clean(root)
+	cleanSourceRoot := path.Clean(sourceRoot)
+	cleanRemotePath := path.Clean(remotePath)
+	relative := strings.TrimPrefix(cleanRemotePath, cleanSourceRoot)
+	relative = strings.TrimPrefix(relative, "/")
+	target := filepath.Join(cleanRoot, filepath.FromSlash(relative))
+	rel, err := filepath.Rel(cleanRoot, target)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", errDestNotFound
+	}
+	return target, nil
 }

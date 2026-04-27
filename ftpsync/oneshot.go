@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -102,6 +103,9 @@ func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncO
 	if result.Direction == DirectionLocalToFTP {
 		return runSyncOnceLocalToFTP(ctx, svc, adapter, result)
 	}
+	if result.Direction == DirectionFTPToLocal {
+		return runSyncOnceFTPToLocal(ctx, svc, adapter, result)
+	}
 
 	select {
 	case <-ctx.Done():
@@ -119,6 +123,119 @@ func runSyncOnceScaffold(ctx context.Context, svc *FTPSyncService, adapter syncO
 	}
 	svc.reportProgress(Progress{Path: result.SourceRoot, FilesTransferred: int64(result.FilesAttempted), FilesTotal: int64(result.FilesAttempted)})
 	_ = adapter
+	return nil
+}
+
+func runSyncOnceFTPToLocal(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+	destinationRoot, err := filepath.Abs(svc.opts.Destination.LocalPath)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(svc.opts.Destination.LocalPath) == "" {
+		return newTransferError("SyncOnce destination local path is required", errInvalidOptions)
+	}
+	if err := os.MkdirAll(destinationRoot, fs.ModePerm); err != nil {
+		return err
+	}
+
+	syncer, err := adapter.newSync()
+	if err != nil {
+		return err
+	}
+	defer syncer.Close()
+
+	remoteRoot := adapter.option.Source.RemotePath().Base()
+	if err := ensureTargetUnderRoot(destinationRoot, remoteRoot, remoteRoot); err != nil {
+		return err
+	}
+
+	var failureErrs []error
+	sourceWalker, ok := syncer.(legacysync.SourceWalker)
+	if !ok {
+		return newTransferError("SyncOnce FTP→local source walker unavailable", errInvalidOptions)
+	}
+
+	err = sourceWalker.WalkSourceDir(remoteRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			failureErrs = append(failureErrs, walkErr)
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if adapter.option.PathIgnore != nil && adapter.option.PathIgnore.MatchPath(currentPath, "ftp pull client sync", "sync once") {
+			return nil
+		}
+
+		if currentPath == remoteRoot {
+			result.PathsVisited++
+			result.DirectoriesAttempted++
+			if createErr := syncer.Create(currentPath); createErr != nil {
+				result.FailureCount++
+				result.Partial = true
+				failureErrs = append(failureErrs, fmt.Errorf("create %s: %w", currentPath, createErr))
+				svc.reportEvent(SyncEvent{Operation: "create", Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
+			}
+			return nil
+		}
+
+		result.PathsVisited++
+		opName := "create"
+		var opErr error
+		isSymlink := d.Type()&os.ModeSymlink != 0
+
+		if d.IsDir() {
+			result.DirectoriesAttempted++
+			opErr = syncer.Create(currentPath)
+		} else if isSymlink {
+			result.FilesAttempted++
+			opName = "symlink"
+			target, readErr := sourceWalker.ReadSourceLink(currentPath)
+			if readErr != nil {
+				opErr = readErr
+			} else {
+				opErr = syncer.Symlink(target, currentPath)
+			}
+		} else {
+			result.FilesAttempted++
+			if opErr = syncer.Create(currentPath); opErr == nil {
+				opName = "write"
+				opErr = syncer.Write(currentPath)
+			}
+		}
+
+		if opErr != nil {
+			result.FailureCount++
+			result.Partial = true
+			failureErrs = append(failureErrs, fmt.Errorf("%s %s: %w", opName, currentPath, opErr))
+			svc.reportEvent(SyncEvent{Operation: opName, Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
+			return nil
+		}
+
+		svc.reportEvent(SyncEvent{Operation: opName, Path: currentPath, Status: "complete"})
+		return nil
+	})
+	if err != nil {
+		if err == context.Canceled {
+			return err
+		}
+		failureErrs = append(failureErrs, err)
+	}
+
+	if len(failureErrs) > 0 && result.PathsVisited == 0 {
+		result.PathsVisited = 1
+		result.FilesAttempted = 1
+	}
+
+	if len(failureErrs) > 0 {
+		result.FailureCount += len(failureErrs)
+		result.Partial = true
+		return errors.Join(failureErrs...)
+	}
 	return nil
 }
 
@@ -330,4 +447,24 @@ func normalizeIgnorePath(value string) string {
 	cleaned := filepath.ToSlash(strings.TrimSpace(value))
 	cleaned = strings.TrimPrefix(cleaned, "./")
 	return strings.TrimPrefix(cleaned, "/")
+}
+
+func ensureTargetUnderRoot(root string, remoteRoot string, remotePath string) error {
+	cleanRoot := filepath.Clean(root)
+	cleanRemoteRoot := path.Clean(remoteRoot)
+	cleanRemotePath := path.Clean(remotePath)
+	relative := strings.TrimPrefix(cleanRemotePath, cleanRemoteRoot)
+	relative = strings.TrimPrefix(relative, "/")
+	target := filepath.Join(cleanRoot, filepath.FromSlash(relative))
+	rel, err := filepath.Rel(cleanRoot, target)
+	if err != nil {
+		return err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return newTransferError("SyncOnce destination path escaped configured root", errInvalidOptions)
+	}
+	if runtime.GOOS == "windows" && filepath.VolumeName(target) != filepath.VolumeName(cleanRoot) {
+		return newTransferError("SyncOnce destination path escaped configured root", errInvalidOptions)
+	}
+	return nil
 }

@@ -64,10 +64,5 @@ type Options struct {
 	Direction   Direction
 	Retry       RetryOptions
 	IgnoreRules []IgnoreRule
-
-	// Hook fields are reserved for Plan 03 and intentionally remain library-local
-	// callback slots instead of depending on global logger or report packages.
-	LogHook      func(message string)
-	ProgressHook func(transferred, total int64)
-	EventHook    func(name, path string)
+	Hooks       HookSet
 }

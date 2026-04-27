@@ -9,7 +9,8 @@ var errInvalidOptions = errors.New("invalid ftpsync options")
 
 // FTPSyncService is the public FTP synchronization service boundary.
 type FTPSyncService struct {
-	opts Options
+	opts  Options
+	hooks HookSet
 }
 
 // Result is the public summary contract returned by one-shot sync calls.
@@ -26,7 +27,8 @@ type Handle interface {
 
 // NewFTPSyncService validates and stores a private copy of typed options.
 func NewFTPSyncService(opts Options) (*FTPSyncService, error) {
-	svc := &FTPSyncService{opts: copyOptions(opts)}
+	copied := copyOptions(opts)
+	svc := &FTPSyncService{opts: copied, hooks: normalizeHooks(copied.Hooks)}
 	if err := svc.Validate(); err != nil {
 		return nil, err
 	}
@@ -161,4 +163,38 @@ func copyOptions(opts Options) Options {
 	}
 
 	return opts
+}
+
+func normalizeHooks(hooks HookSet) HookSet {
+	if hooks.Logger == nil {
+		hooks.Logger = noopLogger{}
+	}
+	if hooks.Progress == nil {
+		hooks.Progress = func(Progress) {}
+	}
+	if hooks.Event == nil {
+		hooks.Event = func(SyncEvent) {}
+	}
+	return hooks
+}
+
+func (s *FTPSyncService) log(message string) {
+	if s == nil {
+		return
+	}
+	s.hooks.Logger.Log(message)
+}
+
+func (s *FTPSyncService) reportProgress(progress Progress) {
+	if s == nil {
+		return
+	}
+	s.hooks.Progress(progress)
+}
+
+func (s *FTPSyncService) reportEvent(event SyncEvent) {
+	if s == nil {
+		return
+	}
+	s.hooks.Event(event)
 }

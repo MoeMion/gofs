@@ -146,6 +146,54 @@ func TestBackgroundWatchesNewDirectories(t *testing.T) {
 	waitForSyncPasses(t, &syncPasses, 3)
 }
 
+func TestBackgroundSyncFailureIsObservableAndNonTerminal(t *testing.T) {
+	defer withSyncOnceExecutor(runSyncOnceScaffold)()
+	var syncPasses int32
+	runSyncOnce = func(ctx context.Context, svc *FTPSyncService, adapter syncOnceAdapter, result *Result) error {
+		pass := atomic.AddInt32(&syncPasses, 1)
+		if pass == 2 {
+			return newError(ErrTransfer, "simulated steady-state failure", errors.New("upload failed"))
+		}
+		return nil
+	}
+
+	sourceRoot := t.TempDir()
+	svc, err := NewFTPSyncService(completeLocalToFTPOptionsForBackgroundRoot(sourceRoot))
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+	handle, err := svc.StartBackground(context.Background())
+	if err != nil {
+		t.Fatalf("StartBackground returned error: %v", err)
+	}
+	defer func() { _ = handle.Stop(context.Background()) }()
+	waitReady(t, handle)
+	waitForSyncPasses(t, &syncPasses, 1)
+
+	if err := os.WriteFile(filepath.Join(sourceRoot, "fail-once.txt"), []byte("fail"), 0o644); err != nil {
+		t.Fatalf("write failure trigger: %v", err)
+	}
+	waitForSyncPasses(t, &syncPasses, 2)
+	if err := handle.Err(); err == nil || !IsKind(err, ErrTransfer) {
+		t.Fatalf("expected steady-state transfer failure to be observable, got %v", err)
+	}
+	select {
+	case <-handle.Done():
+		t.Fatalf("background run should not terminate after one sync failure")
+	default:
+	}
+
+	if err := os.WriteFile(filepath.Join(sourceRoot, "after-failure.txt"), []byte("after"), 0o644); err != nil {
+		t.Fatalf("write after failure trigger: %v", err)
+	}
+	waitForSyncPasses(t, &syncPasses, 3)
+	select {
+	case <-handle.Done():
+		t.Fatalf("background run should stay alive after processing later sync pass")
+	default:
+	}
+}
+
 func completeLocalToFTPOptionsForBackground() Options {
 	return completeLocalToFTPOptionsForBackgroundRoot("/data/source")
 }

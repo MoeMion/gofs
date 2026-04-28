@@ -1,4 +1,4 @@
-module github.com/no-src/gofs
+module ftpsync
 
 go 1.24.4
 

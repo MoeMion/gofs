@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/no-src/gofs/ftpsync"
+	"ftpsync/ftpsync"
 )
 
 func TestErrorKindValidation(t *testing.T) {

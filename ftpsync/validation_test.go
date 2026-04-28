@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/no-src/gofs/ftpsync"
+	"ftpsync/ftpsync"
 )
 
 func TestValidateAcceptsSupportedDirections(t *testing.T) {

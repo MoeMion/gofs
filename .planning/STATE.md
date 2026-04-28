@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FTP Sync Library
-status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-04-27T10:49:58.733Z"
-last_activity: 2026-04-27
+status: verifying
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-04-28T01:08:59.628Z"
+last_activity: 2026-04-28
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 Phase: 08 (ftp-only-package-reduction) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-04-27
+Status: Phase complete — ready for verification
+Last activity: 2026-04-28
 
 Progress: [████░░░░░░] 40%
 
@@ -71,6 +71,7 @@ Progress: [████░░░░░░] 40%
 | Phase 08-ftp-only-package-reduction P01 | 8min | 2 tasks | 2 files |
 | Phase 08-ftp-only-package-reduction P02 | 32min | 2 tasks | 5 files |
 | Phase 08-ftp-only-package-reduction P03 | 11min | 2 tasks | 290 files |
+| Phase 08-ftp-only-package-reduction P04 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 08]: Kept retry and ignore behavior inside ftpsync using typed options, preserving public API shape while shrinking the default package graph.
 - [Phase 08]: Deleted old CLI, API, server, protocol, and legacy helper package trees so the reduced root module defaults to the ftpsync library package only.
 - [Phase 08]: Removed Docker and release workflows tied to the removed CLI/server binary so stale runtime artifacts cannot be published from the reduced library module.
+- [Phase 08]: Kept the reduced root module on the existing github.com/no-src/gofs module path while pruning the dependency graph to ftpsync and its FTP/watch dependencies.
+- [Phase 08]: Scoped CI to default build and test commands for ./... because old integration, SFTP, MinIO, Docker, and CLI surfaces were removed in Phase 8.
+- [Phase 08]: Expanded the dependency boundary proof from ./ftpsync to ./... so the final root module build graph is explicitly covered.
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-27T10:49:58.704Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-04-28T01:08:59.591Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None

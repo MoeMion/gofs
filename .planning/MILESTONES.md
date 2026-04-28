@@ -1,5 +1,22 @@
 # Milestones
 
+## v2.0 FTP Sync Library (Shipped: 2026-04-28)
+
+**Phases completed:** 5 phases, 17 plans, 23 tasks
+
+**Key accomplishments:**
+
+- Shipped a typed `ftpsync.FTPSyncService` public API with validation, structured errors, context support, retry/ignore options, and no-op hooks.
+- Implemented one-shot local disk→FTP and FTP→local disk sync through direct Go calls with compact `Result + error` semantics.
+- Added cwd-safety, passive-mode, path-encoding, cancellation, lifecycle, and real loopback FTP integration coverage.
+- Added background local disk→FTP sync with recursive filesystem watching, debounce, error observation, and deterministic shutdown.
+- Reduced the active module to the focused FTP sync library by removing old CLI, server, protocol, task, SFTP, MinIO, Docker, and release surfaces.
+- Documented final adoption and migration paths with README examples, compiler-checked examples, and `MIGRATION.md`.
+
+**Known tech debt accepted at close:** planning source-of-truth drift was present in ROADMAP, REQUIREMENTS, PROJECT, and STATE before archival; implementation and verification passed, and the drift was reconciled during close.
+
+---
+
 ## v1.0 FTP client sync support (Shipped: 2026-04-27)
 
 **Phases completed:** 4 phases, 9 plans, 18 tasks

@@ -384,7 +384,7 @@ func TestBackgroundWaitReturnsFinalError(t *testing.T) {
 		t.Fatalf("write failure trigger: %v", err)
 	}
 	waitForSyncPasses(t, &syncPasses, 2)
-	if err := handle.Err(); err == nil || !IsKind(err, ErrTransfer) {
+	if err := waitForBackgroundError(t, handle, ErrTransfer); err == nil || !IsKind(err, ErrTransfer) {
 		t.Fatalf("expected latest runtime transfer failure, got %v", err)
 	}
 	if err := handle.Stop(context.Background()); err != nil {
@@ -441,6 +441,24 @@ func waitForSyncPasses(t *testing.T, syncPasses *int32, want int32) {
 		case <-ticker.C:
 			if atomic.LoadInt32(syncPasses) >= want {
 				return
+			}
+		}
+	}
+}
+
+func waitForBackgroundError(t *testing.T, handle Handle, want ErrorKind) error {
+	t.Helper()
+	deadline := time.After(2 * time.Second)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-deadline:
+			return handle.Err()
+		case <-ticker.C:
+			err := handle.Err()
+			if IsKind(err, want) {
+				return err
 			}
 		}
 	}

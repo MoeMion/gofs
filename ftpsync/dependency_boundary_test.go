@@ -9,9 +9,9 @@ import (
 
 func TestPackageDependencyBoundaryRejectsOldRuntime(t *testing.T) {
 	// Keep this exact command text discoverable for the Phase 8 acceptance check.
-	const dependencyCommand = "go list -deps ./ftpsync"
+	const dependencyCommand = "go list -deps ./..."
 
-	cmd := exec.Command("go", "list", "-deps", "./ftpsync")
+	cmd := exec.Command("go", "list", "-deps", "./...")
 	cmd.Dir = ".."
 	out, err := cmd.CombinedOutput()
 	if err != nil {

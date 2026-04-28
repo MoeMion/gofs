@@ -41,12 +41,12 @@ Requirements for converting the existing FTP synchronization capability into a f
 
 ### Verification and Documentation
 
-- [ ] **VERIFY-01**: Automated tests cover public `FTPSyncService` construction, validation, one-shot push, one-shot pull, and background disk→FTP lifecycle behavior
-- [ ] **VERIFY-02**: Real FTP integration tests verify library-based local→FTP and FTP→local one-shot flows without the CLI
-- [ ] **VERIFY-03**: Regression tests cover cwd safety, FTP path encoding, passive-mode defaults, cancellation, and background goroutine shutdown
-- [ ] **DOC-01**: README and package examples show how to use `ftpsync.FTPSyncService` with typed options for one-shot push, one-shot pull, and background disk→FTP sync
-- [ ] **DOC-02**: Documentation clearly states removed v2.0 surfaces and limitations: no CLI runtime, no FTPS, no FTP server, no FTP↔FTP sync, no FTP→disk background polling, and no bidirectional conflict resolution
-- [ ] **DOC-03**: Release notes or migration documentation explain the shift from CLI usage to Go package invocation and identify the supported import/package path
+- [x] **VERIFY-01**: Automated tests cover public `FTPSyncService` construction, validation, one-shot push, one-shot pull, and background disk→FTP lifecycle behavior
+- [x] **VERIFY-02**: Real FTP integration tests verify library-based local→FTP and FTP→local one-shot flows without the CLI
+- [x] **VERIFY-03**: Regression tests cover cwd safety, FTP path encoding, passive-mode defaults, cancellation, and background goroutine shutdown
+- [x] **DOC-01**: README and package examples show how to use `ftpsync.FTPSyncService` with typed options for one-shot push, one-shot pull, and background disk→FTP sync
+- [x] **DOC-02**: Documentation clearly states removed v2.0 surfaces and limitations: no CLI runtime, no FTPS, no FTP server, no FTP↔FTP sync, no FTP→disk background polling, and no bidirectional conflict resolution
+- [x] **DOC-03**: Release notes or migration documentation explain the shift from CLI usage to Go package invocation and identify the supported import/package path
 
 ## Future Requirements
 
@@ -100,12 +100,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRUNE-02 | Phase 8 | Complete |
 | PRUNE-03 | Phase 8 | Complete |
 | PRUNE-04 | Phase 8 | Complete |
-| VERIFY-01 | Phase 9 | Pending |
-| VERIFY-02 | Phase 9 | Pending |
-| VERIFY-03 | Phase 9 | Pending |
-| DOC-01 | Phase 9 | Pending |
-| DOC-02 | Phase 9 | Pending |
-| DOC-03 | Phase 9 | Pending |
+| VERIFY-01 | Phase 9 | Complete |
+| VERIFY-02 | Phase 9 | Complete |
+| VERIFY-03 | Phase 9 | Complete |
+| DOC-01 | Phase 9 | Complete |
+| DOC-02 | Phase 9 | Complete |
+| DOC-03 | Phase 9 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 25 total

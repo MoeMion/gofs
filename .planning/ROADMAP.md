@@ -119,10 +119,10 @@ Plans:
   5. Migration or release notes clearly state the supported import/package path and removed/unsupported v2.0 surfaces.
 **Plans**: 4 plans
 Plans:
-- [ ] 09-01-PLAN.md — Switch the module to the local `ftpsync` import path and add final verification coverage guards.
-- [ ] 09-02-PLAN.md — Add Go-native loopback FTP integration tests for public one-shot push and pull flows.
-- [ ] 09-03-PLAN.md — Add compiler-checked Go examples for one-shot push, one-shot pull, and background disk→FTP usage.
-- [ ] 09-04-PLAN.md — Rewrite README and add migration notes for the breaking local-library contract.
+- [x] 09-01-PLAN.md — Switch the module to the local `ftpsync` import path and add final verification coverage guards.
+- [x] 09-02-PLAN.md — Add Go-native loopback FTP integration tests for public one-shot push and pull flows.
+- [x] 09-03-PLAN.md — Add compiler-checked Go examples for one-shot push, one-shot pull, and background disk→FTP usage.
+- [x] 09-04-PLAN.md — Rewrite README and add migration notes for the breaking local-library contract.
 
 ## Progress
 

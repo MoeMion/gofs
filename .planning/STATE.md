@@ -88,3 +88,10 @@ None blocking v2.0 close.
 Last session: 2026-04-28
 Stopped at: v2.0 milestone archived
 Resume file: None
+
+## Quick Tasks Completed
+
+| Date | ID | Task | Summary |
+|------|----|------|---------|
+| 2026-04-29 | 260429-n6v | FTPSync Windows path compatibility | Normalized FTP slash paths, separator-insensitive remote/local mapping, Windows-style ignore paths, and added regression tests. |
+| 2026-04-28 | 260428-n6f | Root FTP background sync main example | Added root `main.go` using `FTPSyncService.StartBackground` with hard-coded FTP options, signal shutdown, Stop/Wait handling, and verification. |

@@ -207,6 +207,7 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, result *Res
 	if err != nil {
 		return err
 	}
+	seenRemotePaths := map[string]struct{}{}
 
 	var failureErrs []error
 	err = filepath.WalkDir(sourceRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
@@ -244,6 +245,7 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, result *Res
 		if relPath == "" {
 			remotePath = remoteRoot
 		}
+		seenRemotePaths[cleanFTPPath(remotePath)] = struct{}{}
 		result.PathsVisited++
 		opName := "create"
 		var opErr error
@@ -291,8 +293,82 @@ func runSyncOnceLocalToFTP(ctx context.Context, svc *FTPSyncService, result *Res
 	if err != nil {
 		return err
 	}
+	if err := removeRemotePathsMissingLocally(ctx, svc, client, sourceRoot, remoteRoot, pathIgnore, seenRemotePaths, result, &failureErrs); err != nil {
+		return err
+	}
 	if len(failureErrs) > 0 {
 		return errors.Join(failureErrs...)
+	}
+	return nil
+}
+
+func removeRemotePathsMissingLocally(ctx context.Context, svc *FTPSyncService, client ftpCore, sourceRoot string, remoteRoot string, pathIgnore *syncOnceIgnore, seenRemotePaths map[string]struct{}, result *Result, failureErrs *[]error) error {
+	var removeTargets []string
+	err := client.walk(remoteRoot, func(currentPath string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			*failureErrs = append(*failureErrs, walkErr)
+			result.FailureCount++
+			result.Partial = true
+			svc.reportEvent(SyncEvent{Operation: "walk", Path: currentPath, Status: "failed", ErrorKind: ErrTransfer})
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		cleanRemotePath := cleanFTPPath(currentPath)
+		if cleanRemotePath == cleanFTPPath(remoteRoot) {
+			return nil
+		}
+		if _, ok := seenRemotePaths[cleanRemotePath]; ok {
+			return nil
+		}
+
+		relPath := remoteRelativePath(remoteRoot, currentPath)
+		if pathIgnore != nil && pathIgnore.MatchPath(relPath, "ftp push client sync", "sync once") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		localPath := filepath.Join(sourceRoot, filepath.FromSlash(relPath))
+		if _, err := os.Lstat(localPath); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			*failureErrs = append(*failureErrs, err)
+			result.FailureCount++
+			result.Partial = true
+			svc.reportEvent(SyncEvent{Operation: "stat", Path: localPath, Status: "failed", ErrorKind: ErrTransfer})
+			return nil
+		}
+
+		removeTargets = append(removeTargets, currentPath)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, remotePath := range removeTargets {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		result.PathsVisited++
+		if err := retryWithContext(ctx, svc.opts.Retry, "ftp remove", func() error { return client.remove(remotePath) }); err != nil {
+			result.FailureCount++
+			result.Partial = true
+			*failureErrs = append(*failureErrs, fmt.Errorf("remove %s: %w", remotePath, err))
+			svc.log(fmt.Sprintf("SyncOnce remove failed: %s", remotePath))
+			svc.reportEvent(SyncEvent{Operation: "remove", Path: remotePath, Status: "failed", ErrorKind: ErrTransfer})
+			continue
+		}
+		svc.reportEvent(SyncEvent{Operation: "remove", Path: remotePath, Status: "complete"})
 	}
 	return nil
 }
@@ -371,9 +447,13 @@ func (i *syncOnceIgnore) MatchPath(currentPath, caller, desc string) bool {
 }
 
 func normalizeIgnorePath(value string) string {
-	cleaned := filepath.ToSlash(strings.TrimSpace(value))
+	cleaned := strings.ReplaceAll(strings.TrimSpace(value), `\`, "/")
 	cleaned = strings.TrimPrefix(cleaned, "./")
-	return strings.TrimPrefix(cleaned, "/")
+	cleaned = strings.TrimPrefix(cleaned, "/")
+	if cleaned == "" {
+		return ""
+	}
+	return strings.Trim(path.Clean(cleaned), "/")
 }
 
 func ensureTargetUnderRoot(root string, remoteRoot string, remotePath string) error {
@@ -393,9 +473,16 @@ func ensureTargetUnderRoot(root string, remoteRoot string, remotePath string) er
 }
 
 func localTargetPath(root string, remoteRoot string, remotePath string) string {
-	cleanRemoteRoot := path.Clean(remoteRoot)
-	cleanRemotePath := path.Clean(remotePath)
+	cleanRemoteRoot := cleanFTPPath(remoteRoot)
+	cleanRemotePath := cleanFTPPath(remotePath)
 	relative := strings.TrimPrefix(cleanRemotePath, cleanRemoteRoot)
 	relative = strings.TrimPrefix(relative, "/")
 	return filepath.Join(filepath.Clean(root), filepath.FromSlash(relative))
+}
+
+func remoteRelativePath(remoteRoot string, remotePath string) string {
+	cleanRemoteRoot := cleanFTPPath(remoteRoot)
+	cleanRemotePath := cleanFTPPath(remotePath)
+	relative := strings.TrimPrefix(cleanRemotePath, cleanRemoteRoot)
+	return strings.TrimPrefix(relative, "/")
 }

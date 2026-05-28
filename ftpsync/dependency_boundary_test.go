@@ -11,7 +11,7 @@ func TestPackageDependencyBoundaryRejectsOldRuntime(t *testing.T) {
 	// Keep this exact command text discoverable for the Phase 8 acceptance check.
 	const dependencyCommand = "go list -deps ./..."
 	const packageCommand = "go list ./..."
-	const onlyPackage = "ftpsync/ftpsync"
+	allowedPackages := []string{"ftpsync", "ftpsync/ftpsync"}
 
 	packageCmd := exec.Command("go", "list", "./...")
 	packageCmd.Dir = ".."
@@ -20,8 +20,9 @@ func TestPackageDependencyBoundaryRejectsOldRuntime(t *testing.T) {
 		t.Fatalf("%s failed: %v\n%s", packageCommand, err, packageOut)
 	}
 	packages := strings.Fields(strings.TrimSpace(string(packageOut)))
-	if len(packages) != 1 || packages[0] != onlyPackage {
-		t.Fatalf("expected reduced module to expose only %s, got %#v", onlyPackage, packages)
+	sort.Strings(packages)
+	if strings.Join(packages, "\n") != strings.Join(allowedPackages, "\n") {
+		t.Fatalf("expected reduced module to expose only %#v, got %#v", allowedPackages, packages)
 	}
 
 	cmd := exec.Command("go", "list", "-deps", "./...")

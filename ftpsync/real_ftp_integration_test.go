@@ -34,6 +34,7 @@ func TestIntegrationRealFTPLocalToFTP(t *testing.T) {
 	sourceRoot := t.TempDir()
 	writeTestFile(t, filepath.Join(sourceRoot, "root.txt"), "root")
 	writeTestFile(t, filepath.Join(sourceRoot, "nested", "child.txt"), "child")
+	writeTestFile(t, filepath.Join(server.Root, "incoming", "stale.txt"), "stale")
 
 	svc, err := NewFTPSyncService(Options{
 		Direction: DirectionLocalToFTP,
@@ -62,6 +63,7 @@ func TestIntegrationRealFTPLocalToFTP(t *testing.T) {
 	}
 	assertFileContent(t, filepath.Join(server.Root, "incoming", "root.txt"), "root")
 	assertFileContent(t, filepath.Join(server.Root, "incoming", "nested", "child.txt"), "child")
+	assertPathMissing(t, filepath.Join(server.Root, "incoming", "stale.txt"))
 }
 
 func TestIntegrationRealFTPToLocal(t *testing.T) {
@@ -192,5 +194,12 @@ func assertFileContent(t *testing.T, filePath string, want string) {
 	}
 	if string(content) != want {
 		t.Fatalf("%s content = %q, want %q", filePath, content, want)
+	}
+}
+
+func assertPathMissing(t *testing.T, filePath string) {
+	t.Helper()
+	if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected %s to be missing, stat err=%v", filePath, err)
 	}
 }

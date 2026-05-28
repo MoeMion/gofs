@@ -294,7 +294,7 @@ func (c *ftpPathCodec) decodePath(value string) string {
 	if !ok {
 		return value
 	}
-	return pathpkg.Clean(decoded)
+	return cleanFTPPath(decoded)
 }
 
 func (c *ftpPathCodec) decodeEntry(entry *ftp.Entry) *ftp.Entry {
@@ -388,10 +388,11 @@ func (i ftpFileInfo) IsDir() bool { return i.Mode().IsDir() }
 func (i ftpFileInfo) Sys() any    { return i.entry }
 
 func cleanFTPPath(value string) string {
-	if strings.TrimSpace(value) == "" {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return "/"
 	}
-	clean := pathpkg.Clean(value)
+	clean := pathpkg.Clean(strings.ReplaceAll(trimmed, `\`, "/"))
 	if clean == "." {
 		return "/"
 	}
@@ -399,10 +400,15 @@ func cleanFTPPath(value string) string {
 }
 
 func joinFTPPath(base string, elem string) string {
-	if base == "" || base == "/" {
-		return "/" + strings.TrimPrefix(elem, "/")
+	cleanBase := cleanFTPPath(base)
+	cleanElem := strings.ReplaceAll(strings.TrimSpace(elem), `\`, "/")
+	if cleanElem == "" || cleanElem == "." {
+		return cleanBase
 	}
-	return pathpkg.Join(base, elem)
+	if cleanBase == "/" {
+		return cleanFTPPath("/" + strings.TrimPrefix(cleanElem, "/"))
+	}
+	return cleanFTPPath(pathpkg.Join(cleanBase, cleanElem))
 }
 
 func isFTPAlreadyExists(err error) bool {

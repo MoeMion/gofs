@@ -200,6 +200,85 @@ func TestSyncOnceLocalToFTP(t *testing.T) {
 	}
 }
 
+func TestSyncOnceLocalToFTPRemovesRemoteMissingLocally(t *testing.T) {
+	defer withFTPClientFactory(openFTPClient)()
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "keep.txt"), []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write keep file: %v", err)
+	}
+
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = &recordingFTPClient{walkEntries: []walkEntry{
+			{path: "/incoming", isDir: true},
+			{path: "/incoming/keep.txt", isDir: false},
+			{path: "/incoming/deleted.txt", isDir: false},
+			{path: "/incoming/deleted-dir", isDir: true},
+		}}
+		return captured, nil
+	}
+
+	opts := completeLocalToFTPOptionsForOneShot()
+	opts.Source.LocalPath = tempDir
+	svc, err := NewFTPSyncService(opts)
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	result, err := svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if !containsString(captured.removes, "/incoming/deleted.txt") || !containsString(captured.removes, "/incoming/deleted-dir") {
+		t.Fatalf("expected stale remote paths to be removed, got %#v", captured.removes)
+	}
+	if containsString(captured.removes, "/incoming/keep.txt") || containsString(captured.removes, "/incoming") {
+		t.Fatalf("expected existing file and remote root to be kept, got %#v", captured.removes)
+	}
+	if result.FailureCount != 0 || result.Partial {
+		t.Fatalf("expected successful removal pass, got %#v", result)
+	}
+}
+
+func TestSyncOnceLocalToFTPNormalizesRemoteRootSeparators(t *testing.T) {
+	defer withFTPClientFactory(openFTPClient)()
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "keep.txt"), []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write keep file: %v", err)
+	}
+
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = &recordingFTPClient{walkEntries: []walkEntry{
+			{path: `/incoming\nested`, isDir: true},
+			{path: `/incoming\keep.txt`, isDir: false},
+		}}
+		return captured, nil
+	}
+
+	opts := completeLocalToFTPOptionsForOneShot()
+	opts.Source.LocalPath = tempDir
+	opts.Destination.FTP.RemotePath = `\incoming\`
+	svc, err := NewFTPSyncService(opts)
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	_, err = svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if !containsFTPWriteRemote(captured.writes, "/incoming/keep.txt") {
+		t.Fatalf("expected slash-style FTP write path, got %#v", captured.writes)
+	}
+	if containsString(captured.removes, `/incoming\keep.txt`) {
+		t.Fatalf("expected remote keep path not to be removed when separators differ, got %#v", captured.removes)
+	}
+	if !containsString(captured.removes, `/incoming\nested`) {
+		t.Fatalf("expected stale normalized remote directory to be removed, got %#v", captured.removes)
+	}
+}
+
 func TestSyncOnceLocalToFTPPartialFailure(t *testing.T) {
 	defer withFTPClientFactory(openFTPClient)()
 	tempDir := t.TempDir()
@@ -289,6 +368,71 @@ func TestSyncOnceFTPToLocalSuccess(t *testing.T) {
 	}
 	if !containsFTPRead(captured.readFiles, remoteFile) || result.Direction != DirectionFTPToLocal || result.DestinationRoot != destinationRoot {
 		t.Fatalf("expected FTP→local result and read, result=%#v reads=%#v", result, captured.readFiles)
+	}
+}
+
+func TestSyncOnceFTPToLocalNormalizesRemotePathAndIgnoresTrailingSlash(t *testing.T) {
+	defer withFTPClientFactory(openFTPClient)()
+	destinationRoot := t.TempDir()
+	remoteFile := `/outgoing\nested\child.txt`
+	var captured *recordingFTPClient
+	openFTPClient = func(ctx context.Context, opts FTPOptions) (ftpCore, error) {
+		captured = &recordingFTPClient{walkEntries: []walkEntry{{path: `/outgoing\`, isDir: true}, {path: remoteFile, isDir: false}}}
+		return captured, nil
+	}
+	opts := completeFTPToLocalOptionsForOneShot()
+	opts.Source.FTP.RemotePath = `/outgoing/`
+	opts.Destination.LocalPath = destinationRoot + string(os.PathSeparator)
+	svc, err := NewFTPSyncService(opts)
+	if err != nil {
+		t.Fatalf("construct service: %v", err)
+	}
+
+	_, err = svc.SyncOnce(context.Background())
+	if err != nil {
+		t.Fatalf("SyncOnce returned error: %v", err)
+	}
+	if !containsFTPRead(captured.readFiles, remoteFile) {
+		t.Fatalf("expected FTP read for backslash remote path, reads=%#v", captured.readFiles)
+	}
+	if _, err := os.Stat(filepath.Join(destinationRoot, "nested", "child.txt")); err != nil {
+		t.Fatalf("expected remote file mapped under local root independent of trailing slash: %v", err)
+	}
+}
+
+func TestSyncOnceIgnoreRulesNormalizeWindowsStylePaths(t *testing.T) {
+	ignore, err := newSyncOnceIgnore([]IgnoreRule{
+		{Kind: IgnoreKindLiteral, Pattern: `tmp\cache\`},
+		{Kind: IgnoreKindGlob, Pattern: `build\*.tmp`},
+	})
+	if err != nil {
+		t.Fatalf("compile ignore rules: %v", err)
+	}
+
+	if !ignore.MatchPath(`tmp/cache`, "test", "") {
+		t.Fatalf("expected slash-style path to match Windows literal ignore rule")
+	}
+	if !ignore.MatchPath(`build\output.tmp`, "test", "") {
+		t.Fatalf("expected Windows-style path to match normalized glob ignore rule")
+	}
+	if ignore.MatchPath(`build\output.log`, "test", "") {
+		t.Fatalf("expected non-matching extension not to match normalized glob ignore rule")
+	}
+}
+
+func TestFTPPathHelpersNormalizeSeparatorsAndTrailingSlashes(t *testing.T) {
+	if got := cleanFTPPath(`\incoming\nested\`); got != "/incoming/nested" {
+		t.Fatalf("cleanFTPPath normalized incorrectly: %q", got)
+	}
+	if got := joinFTPPath(`/incoming/`, `nested\child.txt`); got != "/incoming/nested/child.txt" {
+		t.Fatalf("joinFTPPath normalized incorrectly: %q", got)
+	}
+	if got := remoteRelativePath(`/incoming/`, `\incoming\nested\child.txt`); got != "nested/child.txt" {
+		t.Fatalf("remoteRelativePath normalized incorrectly: %q", got)
+	}
+	root := filepath.Join(t.TempDir(), "dest") + string(os.PathSeparator)
+	if got := localTargetPath(root, `/incoming/`, `/incoming\nested\child.txt`); got != filepath.Join(filepath.Clean(root), "nested", "child.txt") {
+		t.Fatalf("localTargetPath normalized incorrectly: %q", got)
 	}
 }
 
@@ -487,6 +631,15 @@ func (r *recordingFTPClient) close() error {
 func containsFTPWrite(writes []recordedWrite, localPath string) bool {
 	for _, write := range writes {
 		if write.localPath == localPath || write.remotePath == localPath {
+			return true
+		}
+	}
+	return false
+}
+
+func containsFTPWriteRemote(writes []recordedWrite, remotePath string) bool {
+	for _, write := range writes {
+		if write.remotePath == remotePath {
 			return true
 		}
 	}
